@@ -1,0 +1,10 @@
+{
+  "rpcNodeUrl": "https://rpc1.n3.nspcc.ru:10331",
+  "networkMagic": 860833102,
+  "vaultScriptHash": "",
+  "fTokenScriptHash": "",
+  "collateralScriptHash": "",
+  "priceUrl": "",
+  "sleepMillis": 60000,
+  "dryRun": true
+}
