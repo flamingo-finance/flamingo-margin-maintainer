@@ -22,9 +22,7 @@ interface PriceData {
   payload: string;
   signature: string;
   decimals: number;
-  fTokenOnChainPrice: number;
-  fTokenOffChainPrice: number;
-  fTokenCombinedPrice: number;
+  fTokenPrice: number;
   collateralOnChainPrice: number;
   collateralOffChainPrice: number;
   collateralCombinedPrice: number;
@@ -53,7 +51,6 @@ async function getPrices(
   const priceData = await DapiUtils.getPriceFeed();
   const { decimals } = priceData.data;
   const fTokenOnChainPrice = +(await DapiUtils.getOnChainPrice(fTokenHash, decimals));
-  const fTokenOffChainPrice = +priceData.data.prices[fTokenSymbol];
   const collateralOnChainPrice = +(await DapiUtils.getOnChainPrice(collateralHash, decimals));
   const collateralOffChainPrice = +priceData.data.prices[collateralSymbol];
 
@@ -61,9 +58,7 @@ async function getPrices(
     payload: priceData.payload,
     signature: priceData.signature,
     decimals: priceData.data.decimals,
-    fTokenOnChainPrice,
-    fTokenOffChainPrice,
-    fTokenCombinedPrice: (fTokenOnChainPrice + fTokenOffChainPrice) / 2,
+    fTokenPrice: fTokenOnChainPrice,
     collateralOnChainPrice,
     collateralOffChainPrice,
     collateralCombinedPrice: (collateralOnChainPrice + collateralOffChainPrice) / 2,
@@ -71,7 +66,7 @@ async function getPrices(
 }
 
 function computeLoanToValue(vault: AccountVaultBalance, priceData: PriceData) {
-  const numerator = vault.fTokenBalance * priceData.fTokenCombinedPrice;
+  const numerator = vault.fTokenBalance * priceData.fTokenPrice;
   if (numerator === 0) {
     return 0;
   }
