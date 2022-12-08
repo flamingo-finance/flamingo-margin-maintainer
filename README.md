@@ -31,5 +31,10 @@ As of Nov 14, 2022, flamingo-liquidator loops through the following cycle:
 | --- | --- |
 | `FTOKEN_SCRIPT_HASH` | The hash of the fToken that you would like to use to liquidate. |
 | `COLLATERAL_SCRIPT_HASH` | The hash of the collateral that you would like to receive through liquidation. |
+| `WEBHOOK_URL` | A webhook URL that allows you to post notifications to a Discord server you own. Please refer to [Discord Webhooks](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks). |
+| `LIQUIDATOR_NAME` | The name that is used when webhook messages are posted to disambiguate your process from others. |
+| `LOW_BALANCE_THRESHOLD` | The balance under which the process will log a WARN and post an alert to the webhook URL, if specified. |
 | `SLEEP_MILLIS` | The cycle duration expressed in milliseconds. arby will wait this duration betwen each cycle. It is meaningless to set this duration to less than `15000`, as Flamingo prices can't change between blocks which are generated every 15 seconds. |
 | `DRY_RUN` | If set to true, output the computations without actually performing swaps. Useful for testing and tuning parameters. |
+
+Although other parameters do exist in the configuration, tinkering with these properties is not advised unless you are familiar with Neo N3 development.

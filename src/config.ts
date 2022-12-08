@@ -30,9 +30,27 @@ const config = convict({
     arg: 'networkMagic',
     env: 'NETWORK_MAGIC',
   },
+  priceUrl: {
+    format: String,
+    default: '',
+    arg: 'priceUrl',
+    env: 'PRICE_URL',
+  },
+  onChainPriceOnly: {
+    format: Boolean,
+    default: false,
+    arg: 'onChainPriceOnly',
+    env: 'ON_CHAIN_PRICE_ONLY',
+  },
+  maxPageSize: {
+    format: Number,
+    default: 128,
+    arg: 'maxPageSize',
+    env: 'MAX_PAGE_SIZE',
+  },
   vaultScriptHash: {
     format: String,
-    default: '0x54fc620196ddb20a5aee59aaea97c8fcd67dd4a9',
+    default: '',
     arg: 'vaultScriptHash',
     env: 'VAULT_SCRIPT_HASH',
   },
@@ -48,17 +66,23 @@ const config = convict({
     arg: 'collateralScriptHash',
     env: 'COLLATERAL_SCRIPT_HASH',
   },
-  priceUrl: {
+  webhookUrl: {
     format: String,
     default: '',
-    arg: 'priceUrl',
-    env: 'PRICE_URL',
+    arg: 'webhookUrl',
+    env: 'WEB_HOOK_URL',
   },
-  onChainPriceOnly: {
-    format: Boolean,
-    default: false,
-    arg: 'onChainPriceOnly',
-    env: 'ON_CHAIN_PRICE_ONLY',
+  liquidatorName: {
+    format: String,
+    default: '',
+    arg: 'liquidatorName',
+    env: 'LIQUIDATOR_NAME',
+  },
+  lowBalanceThreshold: {
+    format: Number,
+    default: 0,
+    arg: 'lowBalanceThreshold',
+    env: 'LOW_BALANCE_THRESHOLD',
   },
   sleepMillis: {
     format: Number,

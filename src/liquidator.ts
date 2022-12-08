@@ -7,6 +7,7 @@ import { config } from './config';
 import { logger } from './utils/loggingUtils';
 
 import { AccountVaultBalance, DapiUtils } from './utils/dapiUtils';
+import { WebhookUtils } from './utils/webhookUtils';
 
 const properties = config.getProperties();
 
@@ -17,6 +18,9 @@ const FTOKEN_SCRIPT_HASH = properties.fTokenScriptHash;
 const COLLATERAL_SCRIPT_HASH = properties.collateralScriptHash;
 const ON_CHAIN_PRICE_ONLY = properties.onChainPriceOnly;
 const ON_CHAIN_PRICE_DECIMALS = 20;
+const LIQUIDATOR_NAME = properties.liquidatorName;
+const LOW_BALANCE_THRESHOLD = properties.lowBalanceThreshold;
+const MAX_PAGE_SIZE = properties.maxPageSize;
 
 const SLEEP_MILLIS = properties.sleepMillis;
 
@@ -127,23 +131,29 @@ async function attemptLiquidation(
   collateralHash: string,
   liquidationLimit: number,
   onChainPriceOnly: boolean,
+  fTokenSymbol: string,
+  collateralSymbol: string,
+  fTokenDecimals: number,
 ) {
   const loanToValue = computeLoanToValue(vault, priceData);
-  logger.debug(`Attempting liquidation: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${maxLoanToValue}`);
+  logger.debug(`Attempting liquidation: Account: ${vault.account}, Collateral: ${collateralSymbol}, FToken: ${fTokenHash}, LTV: ${loanToValue}, Max LTV: ${maxLoanToValue}`);
 
   if (loanToValue > maxLoanToValue) {
     logger.info(`Liquidating: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${maxLoanToValue}`);
     const liquidateQuantity = computeLiquidateQuantity(fTokenBalance, vault, liquidationLimit);
     try {
       await liquidate(fTokenHash, collateralHash, vault.account, liquidateQuantity, priceData, onChainPriceOnly);
+      const scaledLiquidateQuantity = liquidateQuantity / 10 ** fTokenDecimals;
+      WebhookUtils.postLiquidateSuccess(LIQUIDATOR_NAME, collateralSymbol, fTokenSymbol, scaledLiquidateQuantity);
       return true;
     } catch (e) {
       logger.error('Failed to liquidate - your funds have not been sent');
       logger.error(e);
+      WebhookUtils.postLiquidateFailure(LIQUIDATOR_NAME, collateralSymbol, fTokenSymbol);
       return false;
     }
   } else {
-    logger.debug(`Did not liquidate: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${maxLoanToValue}`);
+    logger.debug(`Did not liquidate: Account: ${vault.account}, Collateral: ${collateralSymbol}, FToken: ${fTokenHash}, LTV: ${loanToValue}, Max LTV: ${maxLoanToValue}`);
     return false;
   }
 }
@@ -161,19 +171,20 @@ function sleep(millis: number) {
   const { address } = OWNER;
   logger.info(`Wallet address=${address}`);
 
-  // TODO: change this to props
-  const MAX_VAULT_LENGTH = 2;
   const FTOKEN_SYMBOL = await DapiUtils.symbol(FTOKEN_SCRIPT_HASH);
   const FTOKEN_DECIMALS = await DapiUtils.decimals(FTOKEN_SCRIPT_HASH);
   const COLLATERAL_SYMBOL = await DapiUtils.symbol(COLLATERAL_SCRIPT_HASH);
   const LIQUIDATION_LIMIT = await DapiUtils.getLiquidationLimit(COLLATERAL_SCRIPT_HASH);
 
-  const initiaLFTokenBalance = await DapiUtils.getBalance(FTOKEN_SCRIPT_HASH, OWNER);
+  const initialFTokenBalance = await DapiUtils.getBalance(FTOKEN_SCRIPT_HASH, OWNER);
+  const scaledInitialFTokenBalance = initialFTokenBalance / 10 ** FTOKEN_DECIMALS;
 
   const maxLoanToValue = await DapiUtils.getMaxLoanToValue(COLLATERAL_SCRIPT_HASH);
-  logger.info(`Initialized with FToken: ${FTOKEN_SYMBOL}, Collateral: ${COLLATERAL_SYMBOL}, Max LTV: ${maxLoanToValue}, Dry Run: ${DRY_RUN}`);
-  logger.info(`Initial FToken balance: ${initiaLFTokenBalance / 10 ** FTOKEN_DECIMALS}`);
+  logger.info(`Initialized "${LIQUIDATOR_NAME}" with FToken: ${FTOKEN_SYMBOL}, Collateral: ${COLLATERAL_SYMBOL}, Max LTV: ${maxLoanToValue}, Dry Run: ${DRY_RUN}`);
+  logger.info(`Initial FToken balance: ${scaledInitialFTokenBalance}`);
   logger.info(`Liquidation limit: ${LIQUIDATION_LIMIT}`);
+
+  WebhookUtils.postInit(LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledInitialFTokenBalance);
 
   while (true) {
     const startMillis = new Date().getTime();
@@ -183,11 +194,18 @@ function sleep(millis: number) {
     const fTokenBalance = await DapiUtils.getBalance(FTOKEN_SCRIPT_HASH, OWNER);
     logger.info(`Current FToken balance: ${fTokenBalance / 10 ** FTOKEN_DECIMALS}`);
 
-    // 2. Loop over vaults and liquidate the first possible vault
+    // 2. Notify if balance is low
+    const scaledFTokenBalance = fTokenBalance / 10 ** FTOKEN_DECIMALS;
+    if (scaledFTokenBalance < LOW_BALANCE_THRESHOLD) {
+      logger.warn(`Current ${FTOKEN_SYMBOL} balance=${scaledFTokenBalance} < lowBalanceThreshold=${LOW_BALANCE_THRESHOLD}`);
+      WebhookUtils.postLowBalance(LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledFTokenBalance, LOW_BALANCE_THRESHOLD);
+    }
+
+    // 3. Loop over vaults and liquidate the first possible vault
     let pageNum = 0;
     let liquidationSuccess = false;
     while (true) {
-      const vaults = (await DapiUtils.getAllVaults(COLLATERAL_SCRIPT_HASH, FTOKEN_SCRIPT_HASH, MAX_VAULT_LENGTH, pageNum))
+      const vaults = (await DapiUtils.getAllVaults(COLLATERAL_SCRIPT_HASH, FTOKEN_SCRIPT_HASH, MAX_PAGE_SIZE, pageNum))
         .sort(() => Math.random() - 0.5);
       for (let i = 0; i < vaults.length; i++) {
         if (vaults[i].collateralBalance > 0) {
@@ -200,6 +218,9 @@ function sleep(millis: number) {
             COLLATERAL_SCRIPT_HASH,
             LIQUIDATION_LIMIT,
             ON_CHAIN_PRICE_ONLY,
+            FTOKEN_SYMBOL,
+            COLLATERAL_SYMBOL,
+            FTOKEN_DECIMALS,
           );
           if (liquidationSuccess) {
             break;
@@ -212,7 +233,7 @@ function sleep(millis: number) {
       pageNum += 1;
     }
 
-    // 3. Rest after a job well done
+    // 4. Rest after a job well done
     const elapsedMillis = new Date().getTime() - startMillis;
     const remainingMillis = Math.max(0, SLEEP_MILLIS - elapsedMillis);
     if (remainingMillis > 0) {
