@@ -15,6 +15,8 @@ const OWNER: wallet.Account = new wallet.Account(PRIVATE_KEY);
 const DRY_RUN: boolean = properties.dryRun;
 const FTOKEN_SCRIPT_HASH = properties.fTokenScriptHash;
 const COLLATERAL_SCRIPT_HASH = properties.collateralScriptHash;
+const ON_CHAIN_PRICE_ONLY = properties.onChainPriceOnly;
+const ON_CHAIN_PRICE_DECIMALS = 20;
 
 const SLEEP_MILLIS = properties.sleepMillis;
 
@@ -44,10 +46,24 @@ async function submitTransaction(
 
 async function getPrices(
   fTokenHash: string,
-  fTokenSymbol: string,
   collateralHash: string,
   collateralSymbol: string,
+  onChainPriceOnly: boolean,
 ) {
+  if (onChainPriceOnly) {
+    const fTokenOnChainPrice = +(await DapiUtils.getOnChainPrice(fTokenHash, ON_CHAIN_PRICE_DECIMALS));
+    const collateralOnChainPrice = +(await DapiUtils.getOnChainPrice(collateralHash, ON_CHAIN_PRICE_DECIMALS));
+    return {
+      payload: '',
+      signature: '',
+      decimals: ON_CHAIN_PRICE_DECIMALS,
+      fTokenPrice: fTokenOnChainPrice,
+      collateralOnChainPrice,
+      collateralOffChainPrice: collateralOnChainPrice,
+      collateralCombinedPrice: collateralOnChainPrice,
+    } as PriceData;
+  }
+
   const priceData = await DapiUtils.getPriceFeed();
   const { decimals } = priceData.data;
   const fTokenOnChainPrice = +(await DapiUtils.getOnChainPrice(fTokenHash, decimals));
@@ -79,12 +95,39 @@ function computeLiquidateQuantity(fTokenBalance: number, vault: AccountVaultBala
   return Math.floor(Math.min(fTokenBalance, maxLiquidateQuantity));
 }
 
-async function liquidate(fTokenHash: string, collateralHash: string, liquidatee: string, liquidateQuantity: number, priceData: PriceData) {
-  const transaction = await DapiUtils.liquidate(fTokenHash, collateralHash, liquidatee, liquidateQuantity, priceData.payload, priceData.signature, OWNER);
-  await submitTransaction(transaction, `Vault::liquidate(${fTokenHash}, ${collateralHash})`);
+/**
+ * Liquidate a Vault. onChainPriceOnly can be set to true only for whitelisted addresses.
+ *
+ * If onChainPriceOnly is true, we liquidate using only on-chain prices of both the FToken and collateral asset.
+ * Otherwise, we use a combination of the on-chain and off-chain price for the collateral asset.
+ */
+async function liquidate(
+  fTokenHash: string,
+  collateralHash: string,
+  liquidatee: string,
+  liquidateQuantity: number,
+  priceData: PriceData,
+  onChainPriceOnly: boolean,
+) {
+  if (onChainPriceOnly) {
+    const transaction = await DapiUtils.liquidateOCP(fTokenHash, collateralHash, liquidatee, liquidateQuantity, OWNER);
+    await submitTransaction(transaction, `Vault::liquidateOCP(${fTokenHash}, ${collateralHash})`);
+  } else {
+    const transaction = await DapiUtils.liquidate(fTokenHash, collateralHash, liquidatee, liquidateQuantity, priceData.payload, priceData.signature, OWNER);
+    await submitTransaction(transaction, `Vault::liquidate(${fTokenHash}, ${collateralHash})`);
+  }
 }
 
-async function attemptLiquidation(fTokenBalance: number, vault: AccountVaultBalance, priceData: PriceData, maxLoanToValue: number, fTokenHash: string, collateralHash: string, liquidationLimit: number) {
+async function attemptLiquidation(
+  fTokenBalance: number,
+  vault: AccountVaultBalance,
+  priceData: PriceData,
+  maxLoanToValue: number,
+  fTokenHash: string,
+  collateralHash: string,
+  liquidationLimit: number,
+  onChainPriceOnly: boolean,
+) {
   const loanToValue = computeLoanToValue(vault, priceData);
   logger.debug(`Attempting liquidation: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${maxLoanToValue}`);
 
@@ -92,7 +135,7 @@ async function attemptLiquidation(fTokenBalance: number, vault: AccountVaultBala
     logger.info(`Liquidating: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${maxLoanToValue}`);
     const liquidateQuantity = computeLiquidateQuantity(fTokenBalance, vault, liquidationLimit);
     try {
-      await liquidate(fTokenHash, collateralHash, vault.account, liquidateQuantity, priceData);
+      await liquidate(fTokenHash, collateralHash, vault.account, liquidateQuantity, priceData, onChainPriceOnly);
       return true;
     } catch (e) {
       logger.error('Failed to liquidate - your funds have not been sent');
@@ -136,7 +179,7 @@ function sleep(millis: number) {
     const startMillis = new Date().getTime();
 
     // 1. Update prices and balance
-    const priceData = await getPrices(FTOKEN_SCRIPT_HASH, FTOKEN_SYMBOL, COLLATERAL_SCRIPT_HASH, COLLATERAL_SYMBOL);
+    const priceData = await getPrices(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, COLLATERAL_SYMBOL, ON_CHAIN_PRICE_ONLY);
     const fTokenBalance = await DapiUtils.getBalance(FTOKEN_SCRIPT_HASH, OWNER);
     logger.info(`Current FToken balance: ${fTokenBalance / 10 ** FTOKEN_DECIMALS}`);
 
@@ -148,7 +191,16 @@ function sleep(millis: number) {
         .sort(() => Math.random() - 0.5);
       for (let i = 0; i < vaults.length; i++) {
         if (vaults[i].collateralBalance > 0) {
-          liquidationSuccess = await attemptLiquidation(fTokenBalance, vaults[i], priceData, maxLoanToValue, FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, LIQUIDATION_LIMIT);
+          liquidationSuccess = await attemptLiquidation(
+            fTokenBalance,
+            vaults[i],
+            priceData,
+            maxLoanToValue,
+            FTOKEN_SCRIPT_HASH,
+            COLLATERAL_SCRIPT_HASH,
+            LIQUIDATION_LIMIT,
+            ON_CHAIN_PRICE_ONLY,
+          );
           if (liquidationSuccess) {
             break;
           }

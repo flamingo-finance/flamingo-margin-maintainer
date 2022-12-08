@@ -54,6 +54,12 @@ const config = convict({
     arg: 'priceUrl',
     env: 'PRICE_URL',
   },
+  onChainPriceOnly: {
+    format: Boolean,
+    default: false,
+    arg: 'onChainPriceOnly',
+    env: 'ON_CHAIN_PRICE_ONLY',
+  },
   sleepMillis: {
     format: Number,
     default: 300_000,

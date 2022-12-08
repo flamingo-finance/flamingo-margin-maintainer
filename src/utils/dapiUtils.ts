@@ -199,6 +199,30 @@ async function createTransaction(
   return transaction;
 }
 
+export async function liquidateOCP(
+  fTokenHash: string,
+  collateralHash: string,
+  liquidatee: string,
+  quantity: number,
+  account: wallet.Account,
+) {
+  return createTransaction(
+    fTokenHash,
+    'transfer',
+    [
+      sc.ContractParam.hash160(account.address),
+      sc.ContractParam.hash160(VAULT_SCRIPT_HASH),
+      sc.ContractParam.integer(quantity),
+      sc.ContractParam.array(...[
+        sc.ContractParam.string('LIQUIDATE_OCP'),
+        sc.ContractParam.hash160(collateralHash),
+        sc.ContractParam.hash160(liquidatee),
+      ]),
+    ],
+    account,
+  );
+}
+
 export async function liquidate(
   fTokenHash: string,
   collateralHash: string,

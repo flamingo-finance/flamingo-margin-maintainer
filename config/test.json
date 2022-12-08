@@ -4,7 +4,8 @@
   "vaultScriptHash": "0x54fc620196ddb20a5aee59aaea97c8fcd67dd4a9",
   "fTokenScriptHash": "0xbd3ce0c65e4bf362c75ec9a814619f8e1725d18f",
   "collateralScriptHash": "0x85deac50febfd93988d3f391dea54e8289e43e9e",
-  "priceUrl": "https://api.flamingo.finance/token-info/test-signed-prices?fusd=100000000000000000000&bneo=1400000000000000000000",
+  "priceUrl": "https://api.flamingo.finance/token-info/test-signed-prices?fusd=100000000000000000000&bneo=869300000000000000000",
+  "onChainPriceOnly": false,
   "sleepMillis": 60000,
   "dryRun": false
 }
