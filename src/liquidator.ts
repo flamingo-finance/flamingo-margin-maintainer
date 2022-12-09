@@ -33,6 +33,7 @@ let FTOKEN_MULTIPLIER: number;
 let COLLATERAL_MULTIPLIER: number;
 let MAX_LOAN_TO_VALUE: number;
 let LIQUIDATION_LIMIT: number;
+let LIQUIDATION_BONUS: number;
 
 interface PriceData {
   payload: string;
@@ -96,18 +97,28 @@ async function getPrices(
 }
 
 function computeLoanToValue(vault: AccountVaultBalance, priceData: PriceData) {
-  const numerator = vault.fTokenBalance * priceData.fTokenPrice;
+  const numerator = vault.fTokenBalance * priceData.fTokenPrice * COLLATERAL_MULTIPLIER;
   if (numerator === 0) {
     return 0;
   }
-  const denominator = vault.collateralBalance * priceData.collateralCombinedPrice;
+  const denominator = vault.collateralBalance * priceData.collateralCombinedPrice * FTOKEN_MULTIPLIER;
   return (100 * numerator) / denominator;
 }
 
-// TODO: also check collateral balance in Vault
-function computeLiquidateQuantity(fTokenBalance: number, vault: AccountVaultBalance, liquidationLimit: number) {
-  const maxLiquidateQuantity = (liquidationLimit * vault.fTokenBalance) / 100;
-  return Math.floor(Math.min(fTokenBalance, maxLiquidateQuantity));
+function computeLiquidateQuantity(fTokenBalance: number, vault: AccountVaultBalance, priceData: PriceData) {
+  const maxFTokenQuantity = (LIQUIDATION_LIMIT * vault.fTokenBalance) / 100;
+  // In the unlikely case that the Vault is under-collateralized,
+  // we can only liquidate as much collateral as exists in the Vault
+  // Since this is rare, we apply a conservative haircut of 90% to avoid an ABORT
+  const maxCollateralQuantity = (90 * vault.collateralBalance) / (100 + LIQUIDATION_BONUS);
+  const maxFTokenQuantityFromCollateral = (maxCollateralQuantity * priceData.collateralCombinedPrice * FTOKEN_MULTIPLIER) / (priceData.fTokenPrice * COLLATERAL_MULTIPLIER);
+  const maxLiquidateQuantity = Math.min(maxFTokenQuantity, maxFTokenQuantityFromCollateral);
+  const clippedMaxLiquidateQuantity = Math.floor(Math.min(fTokenBalance, maxLiquidateQuantity));
+
+  logger.debug(`Computed clippedMaxLiquidateQuantity=${clippedMaxLiquidateQuantity} from`
+               + ` maxFTokenQuantity=${maxFTokenQuantity}, maxCollateralQuantity=${maxCollateralQuantity},`
+               + ` maxFTokenQuantityFromCollateral=${maxFTokenQuantityFromCollateral}, maxLiquidateQuantity=${maxLiquidateQuantity},`);
+  return clippedMaxLiquidateQuantity;
 }
 
 /**
@@ -198,7 +209,7 @@ async function attemptLiquidation(
 
   if (loanToValue > MAX_LOAN_TO_VALUE) {
     logger.info(`Liquidating: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
-    const liquidateQuantity = computeLiquidateQuantity(fTokenBalance, vault, LIQUIDATION_LIMIT);
+    const liquidateQuantity = computeLiquidateQuantity(fTokenBalance, vault, priceData);
     try {
       await liquidate(notification, vault.account, liquidateQuantity, priceData);
       return true;
@@ -232,6 +243,7 @@ function sleep(millis: number) {
   COLLATERAL_SYMBOL = await DapiUtils.symbol(COLLATERAL_SCRIPT_HASH);
   COLLATERAL_MULTIPLIER = 10 ** (await DapiUtils.decimals(COLLATERAL_SCRIPT_HASH));
   LIQUIDATION_LIMIT = await DapiUtils.getLiquidationLimit(COLLATERAL_SCRIPT_HASH);
+  LIQUIDATION_BONUS = await DapiUtils.getLiquidationBonus(COLLATERAL_SCRIPT_HASH);
   MAX_LOAN_TO_VALUE = await DapiUtils.getMaxLoanToValue(COLLATERAL_SCRIPT_HASH);
   const scaledInitialFTokenBalance = await DapiUtils.getBalance(FTOKEN_SCRIPT_HASH, OWNER) / FTOKEN_MULTIPLIER;
 

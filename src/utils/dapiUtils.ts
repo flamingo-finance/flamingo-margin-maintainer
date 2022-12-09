@@ -95,18 +95,7 @@ export async function getMaxLoanToValue(collateralHash: string) {
     [
       sc.ContractParam.hash160(collateralHash),
     ],
-  ) as any as number;
-}
-
-export async function testFeed(json64: string, collateralHash: string) {
-  return genericReadCall(
-    VAULT_SCRIPT_HASH,
-    'testFeed',
-    [
-      sc.ContractParam.string(json64),
-      sc.ContractParam.hash160(collateralHash),
-    ],
-  ) as any as number;
+  ).then((ret) => parseInt(ret as unknown as string, 10));
 }
 
 export async function getLiquidationLimit(collateralHash: string) {
@@ -116,7 +105,17 @@ export async function getLiquidationLimit(collateralHash: string) {
     [
       sc.ContractParam.hash160(collateralHash),
     ],
-  ) as any as number;
+  ).then((ret) => parseInt(ret as unknown as string, 10));
+}
+
+export async function getLiquidationBonus(collateralHash: string) {
+  return genericReadCall(
+    VAULT_SCRIPT_HASH,
+    'getLiquidationBonus',
+    [
+      sc.ContractParam.hash160(collateralHash),
+    ],
+  ).then((ret) => parseInt(ret as unknown as string, 10));
 }
 
 export async function getOnChainPrice(tokenHash: string, decimal: number) {
@@ -127,7 +126,7 @@ export async function getOnChainPrice(tokenHash: string, decimal: number) {
       sc.ContractParam.hash160(tokenHash),
       sc.ContractParam.integer(decimal),
     ],
-  ) as any as number;
+  ).then((ret) => parseInt(ret as unknown as string, 10));
 }
 
 export async function getVaultBalance(collateralHash: string, fTokenHash: string, address: string) {
