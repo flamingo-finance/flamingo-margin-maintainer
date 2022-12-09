@@ -104,6 +104,7 @@ function computeLoanToValue(vault: AccountVaultBalance, priceData: PriceData) {
   return (100 * numerator) / denominator;
 }
 
+// TODO: also check collateral balance in Vault
 function computeLiquidateQuantity(fTokenBalance: number, vault: AccountVaultBalance, liquidationLimit: number) {
   const maxLiquidateQuantity = (liquidationLimit * vault.fTokenBalance) / 100;
   return Math.floor(Math.min(fTokenBalance, maxLiquidateQuantity));
@@ -127,7 +128,7 @@ async function confirmLiquidate(
     // eslint-disable-next-line no-use-before-define
     notification.offCallback(liquidateSuccess);
     liquidateResolve(false);
-    WebhookUtils.postLiquidateUnconfirmed(LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
+    WebhookUtils.postLiquidateUnconfirmed(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
   }, VERIFY_WAIT_MILLIS);
 
   async function liquidateSuccess(
@@ -151,7 +152,7 @@ async function confirmLiquidate(
         logger.info(`Liquidation ${txid} succeeded`);
         const fTokenQuantity = (dataState.value[4].value as number) / FTOKEN_MULTIPLIER;
         const collateralQuantity = (dataState.value[5].value as number) / COLLATERAL_MULTIPLIER;
-        WebhookUtils.postLiquidateSuccess(LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, fTokenQuantity, collateralQuantity);
+        WebhookUtils.postLiquidateSuccess(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, fTokenQuantity, collateralQuantity);
       }
     }
   }
@@ -176,11 +177,11 @@ async function liquidate(
   const scaledLiquidateQuantity = liquidateQuantity / FTOKEN_MULTIPLIER;
   if (ON_CHAIN_PRICE_ONLY) {
     const transaction = await DapiUtils.liquidateOCP(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, liquidatee, liquidateQuantity, OWNER);
-    WebhookUtils.postLiquidateInitiated(LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledLiquidateQuantity, transaction.hash());
+    WebhookUtils.postLiquidateInitiated(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledLiquidateQuantity, transaction.hash());
     await submitTransaction(transaction, `Vault::liquidateOCP(${FTOKEN_SCRIPT_HASH}, ${COLLATERAL_SCRIPT_HASH})`);
   } else {
     const transaction = await DapiUtils.liquidate(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, liquidatee, liquidateQuantity, priceData.payload, priceData.signature, OWNER);
-    WebhookUtils.postLiquidateInitiated(LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledLiquidateQuantity, transaction.hash());
+    WebhookUtils.postLiquidateInitiated(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledLiquidateQuantity, transaction.hash());
     await submitTransaction(transaction, `Vault::liquidate(${FTOKEN_SCRIPT_HASH}, ${COLLATERAL_SCRIPT_HASH})`);
   }
   await liquidateComplete;
@@ -204,7 +205,7 @@ async function attemptLiquidation(
     } catch (e) {
       logger.error('Failed to liquidate - your funds have not been sent');
       logger.error(e);
-      WebhookUtils.postLiquidateFailure(LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
+      WebhookUtils.postLiquidateFailure(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
       return false;
     }
   } else {
@@ -241,7 +242,7 @@ function sleep(millis: number) {
   const notification = await NeoNotificationInit();
   await notification.available;
 
-  WebhookUtils.postInit(LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledInitialFTokenBalance);
+  WebhookUtils.postInit(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledInitialFTokenBalance);
 
   while (true) {
     const startMillis = new Date().getTime();
@@ -255,7 +256,7 @@ function sleep(millis: number) {
     const scaledFTokenBalance = fTokenBalance / FTOKEN_MULTIPLIER;
     if (scaledFTokenBalance < LOW_BALANCE_THRESHOLD) {
       logger.warn(`Current ${FTOKEN_SYMBOL} balance=${scaledFTokenBalance} < lowBalanceThreshold=${LOW_BALANCE_THRESHOLD}`);
-      WebhookUtils.postLowBalance(LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledFTokenBalance, LOW_BALANCE_THRESHOLD);
+      WebhookUtils.postLowBalance(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledFTokenBalance, LOW_BALANCE_THRESHOLD);
     }
 
     // 3. Loop over vaults and liquidate the first possible vault

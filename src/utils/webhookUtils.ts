@@ -5,14 +5,20 @@ const properties = config.getProperties();
 
 const WEB_HOOK_URL: string = properties.webhookUrl;
 
-async function postMessage(title: string, header: string, details: string, color: number) {
+async function postMessage(
+  dryRun: boolean,
+  title: string,
+  header: string,
+  details: string,
+  color: number,
+) {
   // No-op if webhook URL is not configured
   if (!WEB_HOOK_URL.length) {
     return;
   }
   const embeds = [
     {
-      title,
+      title: dryRun ? `[DRY RUN]: ${title}` : title,
       color,
       footer: {
         text: `📅 ${new Date()}`,
@@ -30,17 +36,24 @@ async function postMessage(title: string, header: string, details: string, color
   axios.post(WEB_HOOK_URL, data, { headers: { 'Content-Type': 'application/json' } });
 }
 
-export async function postInit(name: string, collateral: string, fToken: string, balance: number) {
+export async function postInit(
+  dryRun: boolean,
+  name: string,
+  collateral: string,
+  fToken: string,
+  balance: number,
+) {
   const balanceStr = balance.toLocaleString(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
   const header = `Liquidator: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}\nFToken Balance: ${balanceStr}`;
-  postMessage('Initialized Liquidator', header, details, 3447003);
+  postMessage(dryRun, 'Initialized Liquidator', header, details, 3447003);
 }
 
 export async function postLiquidateInitiated(
+  dryRun: boolean,
   name: string,
   collateral: string,
   fToken: string,
@@ -53,20 +66,22 @@ export async function postLiquidateInitiated(
   );
   const header = `Liquidator: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}\nLiquidate Quantity: ${liquidateQuantityStr}\nTx Hash: 0x${txHash}`;
-  postMessage('Liquidation Initiated', header, details, 3447003);
+  postMessage(dryRun, 'Liquidation Initiated', header, details, 3447003);
 }
 
 export async function postLiquidateUnconfirmed(
+  dryRun: boolean,
   name: string,
   collateral: string,
   fToken: string,
 ) {
   const header = `Liquidator: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}`;
-  postMessage('Liquidation Unconfirmed', header, details, 16776960);
+  postMessage(dryRun, 'Liquidation Unconfirmed', header, details, 16776960);
 }
 
 export async function postLiquidateSuccess(
+  dryRun: boolean,
   name: string,
   collateral: string,
   fToken: string,
@@ -83,20 +98,22 @@ export async function postLiquidateSuccess(
   );
   const header = `Liquidator: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}\nFToken Quantity: ${fTokenQuantityStr}\nCollateral Quantity: ${collateralQuantityStr}`;
-  postMessage('Liquidation Successful', header, details, 5763719);
+  postMessage(dryRun, 'Liquidation Successful', header, details, 5763719);
 }
 
 export async function postLiquidateFailure(
+  dryRun: boolean,
   name: string,
   collateral: string,
   fToken: string,
 ) {
   const header = `Liquidator: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}`;
-  postMessage('Liquidation Failed', header, details, 15548997);
+  postMessage(dryRun, 'Liquidation Failed', header, details, 15548997);
 }
 
 export async function postLowBalance(
+  dryRun: boolean,
   name: string,
   collateral: string,
   fToken: string,
@@ -113,7 +130,7 @@ export async function postLowBalance(
   );
   const header = `Liquidator: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}\nFToken Balance: ${balanceStr}\nBalance Threshold: ${balanceThresholdStr}`;
-  postMessage('Low Balance', header, details, 16776960);
+  postMessage(dryRun, 'Low Balance', header, details, 16776960);
 }
 
 // eslint-disable-next-line import/no-self-import
