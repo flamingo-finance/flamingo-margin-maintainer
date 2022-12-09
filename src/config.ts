@@ -24,6 +24,12 @@ const config = convict({
     arg: 'rpcNodeUrl',
     env: 'RPC_NODE_URL',
   },
+  wsNodeUrl: {
+    format: String,
+    default: '',
+    arg: 'wsNodeUrl',
+    env: 'WS_NODE_URL',
+  },
   networkMagic: {
     format: Number,
     default: 0,
@@ -84,9 +90,15 @@ const config = convict({
     arg: 'lowBalanceThreshold',
     env: 'LOW_BALANCE_THRESHOLD',
   },
+  verifyWaitMillis: {
+    format: Number,
+    default: 0,
+    arg: 'verifyWaitMillis',
+    env: 'VERIFY_WAIT_MILLIS',
+  },
   sleepMillis: {
     format: Number,
-    default: 300_000,
+    default: 0,
     arg: 'sleepMillis',
     env: 'SLEEP_MILLIS',
   },

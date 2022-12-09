@@ -1,5 +1,6 @@
 {
-  "rpcNodeUrl": "http://seed1t5.neo.org:20332",
+  "rpcNodeUrl": "https://rpc.t5.n3.nspcc.ru:20331",
+  "wsNodeUrl": "wss://rpc.t5.n3.nspcc.ru:20331/ws",
   "networkMagic": 894710606,
   "priceUrl": "https://api.flamingo.finance/token-info/test-signed-prices?fusd=100000000000000000000&bneo=869300000000000000000",
   "vaultScriptHash": "0x54fc620196ddb20a5aee59aaea97c8fcd67dd4a9",
@@ -8,6 +9,7 @@
   "webhookUrl": "",
   "liquidatorName": "Flamingo Vulture",
   "lowBalanceThreshold": 100000,
+  "verifyWaitMillis": 60000,
   "sleepMillis": 60000,
   "dryRun": false
 }
