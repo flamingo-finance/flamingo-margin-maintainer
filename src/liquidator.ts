@@ -23,6 +23,8 @@ const ON_CHAIN_PRICE_DECIMALS = 20;
 const LIQUIDATOR_NAME = properties.liquidatorName;
 const LOW_BALANCE_THRESHOLD = properties.lowBalanceThreshold;
 const MAX_PAGE_SIZE = properties.maxPageSize;
+const AUTO_SWAP = properties.autoSwap;
+const SWAP_THRESHOLD = properties.swapThreshold;
 const VERIFY_WAIT_MILLIS = properties.verifyWaitMillis;
 const SLEEP_MILLIS = properties.sleepMillis;
 
@@ -103,6 +105,84 @@ function computeLoanToValue(vault: AccountVaultBalance, priceData: PriceData) {
   }
   const denominator = vault.collateralBalance * priceData.collateralCombinedPrice * FTOKEN_MULTIPLIER;
   return (100 * numerator) / denominator;
+}
+
+async function confirmFlamingoSwap(notification: NeoNotification, contractHash: string, inQuantity: number) {
+  let swapResolve: Function;
+  // eslint-disable-next-line no-unused-vars
+  const swapPromise = new Promise<string>((resolve, _) => {
+    swapResolve = resolve;
+  });
+  const swapFailedT = setTimeout(() => {
+    logger.info(`Flamingo swap wasn't confirmed after ${VERIFY_WAIT_MILLIS} milliseconds, but may still have succeeded`);
+    // eslint-disable-next-line no-use-before-define
+    notification.offCallback(swapSuccess);
+    swapResolve(false);
+    WebhookUtils.postSwapUnconfirmed(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
+  }, VERIFY_WAIT_MILLIS);
+
+  async function swapSuccess(
+    callbackData: RawData,
+    isBinary: boolean,
+  ): Promise<void> {
+    const message = isBinary ? callbackData : callbackData.toString();
+    const data = JSON.parse(message as string);
+    if (data.params) {
+      const txid = data.params[0].container;
+      const dataState = data.params[0].state;
+      const recipientHash = dataState.value[1].value;
+      const outQuantity = dataState.value[2].value;
+      if (DapiUtils.base64MatchesAddress(recipientHash, OWNER.address)) {
+        clearTimeout(swapFailedT);
+        swapResolve(txid);
+        notification.offCallback(swapSuccess);
+        logger.info(`Flamingo swap ${txid} successful`);
+        const scaledInQuantity = inQuantity / COLLATERAL_MULTIPLIER;
+        const scaledOutQuantity = outQuantity / COLLATERAL_MULTIPLIER;
+        WebhookUtils.postSwapSuccess(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledInQuantity, scaledOutQuantity);
+      }
+    }
+  }
+  notification.onCallback(contractHash, 'Transfer', swapSuccess);
+  return swapPromise;
+}
+
+async function flamingoSwap(
+  notification: NeoNotification,
+  fromToken: string,
+  toToken: string,
+  fromSymbol: string,
+  toSymbol: string,
+) {
+  const fromBalance = await DapiUtils.getBalance(fromToken, OWNER);
+
+  try {
+    const transaction = await DapiUtils.createFlamingoSwap(
+      fromToken,
+      toToken,
+      fromBalance,
+      0,
+      OWNER,
+    );
+    await DapiUtils.checkNetworkFee(transaction);
+    await DapiUtils.checkSystemFee(transaction);
+    const scaledFromBalance = fromBalance / COLLATERAL_MULTIPLIER;
+    WebhookUtils.postSwapInitiated(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledFromBalance, transaction.hash());
+    if (DRY_RUN) {
+      logger.info(`Not submitting flamingoSwap(${fromSymbol}, ${toSymbol}) `
+                 + `transaction due to dry run with: fromBalance=${fromBalance}`);
+    } else {
+      logger.info(`Submitting flamingoSwap(${fromSymbol}, ${toSymbol}) `
+                 + `transaction with: fromBalance=${fromBalance}`);
+      const swapComplete = confirmFlamingoSwap(notification, toToken, fromBalance);
+      await DapiUtils.performTransfer(transaction, OWNER);
+      await swapComplete;
+    }
+  } catch (e) {
+    logger.error('Failed to submit flamingoSwap transaction - your funds have not been sent');
+    logger.error(e);
+    WebhookUtils.postSwapFailure(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
+  }
 }
 
 function computeLiquidateQuantity(fTokenBalance: number, vault: AccountVaultBalance, priceData: PriceData) {
@@ -262,7 +342,7 @@ function sleep(millis: number) {
     // 1. Update prices and balance
     const priceData = await getPrices(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, COLLATERAL_SYMBOL, ON_CHAIN_PRICE_ONLY);
     const fTokenBalance = await DapiUtils.getBalance(FTOKEN_SCRIPT_HASH, OWNER);
-    logger.info(`Current FToken balance: ${fTokenBalance / FTOKEN_MULTIPLIER}`);
+    logger.info(`Current ${FTOKEN_SYMBOL} balance: ${fTokenBalance / FTOKEN_MULTIPLIER}`);
 
     // 2. Notify if balance is low
     const scaledFTokenBalance = fTokenBalance / FTOKEN_MULTIPLIER;
@@ -296,7 +376,15 @@ function sleep(millis: number) {
       pageNum += 1;
     }
 
-    // 4. Rest after a job well done
+    const collateralBalance = await DapiUtils.getBalance(COLLATERAL_SCRIPT_HASH, OWNER);
+    logger.info(`Current ${COLLATERAL_SYMBOL} balance: ${collateralBalance / COLLATERAL_MULTIPLIER}`);
+
+    // 4. Swap collateral back to FToken if desired
+    if (AUTO_SWAP && collateralBalance > SWAP_THRESHOLD) {
+      await flamingoSwap(notification, COLLATERAL_SCRIPT_HASH, FTOKEN_SCRIPT_HASH, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
+    }
+
+    // 5. Rest after a job well done
     const elapsedMillis = new Date().getTime() - startMillis;
     const remainingMillis = Math.max(0, SLEEP_MILLIS - elapsedMillis);
     if (remainingMillis > 0) {

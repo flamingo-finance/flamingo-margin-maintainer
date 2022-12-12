@@ -19,6 +19,7 @@ const RPC_CLIENT = new rpc.RPCClient(RPC_NODE_URL);
 const NETWORK_MAGIC = properties.networkMagic;
 
 // Script hashes
+export const ROUTER_SCRIPT_HASH: string = properties.routerScriptHash;
 export const VAULT_SCRIPT_HASH: string = properties.vaultScriptHash;
 export const PRICE_URL: string = properties.priceUrl;
 
@@ -198,6 +199,36 @@ async function createTransaction(
   return transaction;
 }
 
+async function createTransactionCustomContracts(
+  contractHash: string,
+  operation: string,
+  params: sc.ContractParam[],
+  account: wallet.Account,
+  allowedContracts: string[],
+) {
+  const script = sc.createScript({
+    scriptHash: contractHash,
+    operation,
+    args: params,
+  });
+
+  const currentHeight = await RPC_CLIENT.getBlockCount();
+  const transaction = new tx.Transaction({
+    signers: [
+      {
+        account: account.scriptHash,
+        scopes: tx.WitnessScope.CustomContracts,
+        allowedContracts,
+      },
+    ],
+    validUntilBlock: currentHeight + 10,
+    script,
+  });
+  logger.debug(`Transaction created: contractHash=${contractHash}, operation=${operation}, `
+    + `params=${JSON.stringify(params)}, account=${account.address}`);
+  return transaction;
+}
+
 export async function liquidateOCP(
   fTokenHash: string,
   collateralHash: string,
@@ -247,6 +278,49 @@ export async function liquidate(
       ]),
     ],
     account,
+  );
+}
+
+export async function createFlamingoSwap(
+  fromToken: string,
+  toToken: string,
+  quantity: number,
+  minOutQuantity: number,
+  account: wallet.Account,
+) {
+  const maxDelay = 60000;
+  const operation = 'swapTokenInForTokenOut';
+  const allowedContracts = [
+    ROUTER_SCRIPT_HASH,
+    fromToken,
+  ];
+  const paramsJson = {
+    type: 'Array',
+    value: [
+      {
+        type: 'Hash160',
+        value: fromToken,
+      },
+      {
+        type: 'Hash160',
+        value: toToken,
+      },
+    ],
+  };
+  const params = [
+    sc.ContractParam.hash160(account.address),
+    sc.ContractParam.integer(quantity),
+    sc.ContractParam.integer(minOutQuantity),
+    sc.ContractParam.fromJson(paramsJson),
+    sc.ContractParam.integer(new Date().getTime() + maxDelay),
+  ];
+
+  return createTransactionCustomContracts(
+    ROUTER_SCRIPT_HASH,
+    operation,
+    params,
+    account,
+    allowedContracts,
   );
 }
 

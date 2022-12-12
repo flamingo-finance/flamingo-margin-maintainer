@@ -112,6 +112,66 @@ export async function postLiquidateFailure(
   postMessage(dryRun, 'Liquidation Failed', header, details, 15548997);
 }
 
+export async function postSwapInitiated(
+  dryRun: boolean,
+  name: string,
+  collateral: string,
+  fToken: string,
+  swapQuantity: number,
+  txHash: string,
+) {
+  const swapQuantityStr = swapQuantity.toLocaleString(
+    undefined,
+    { maximumFractionDigits: 2, minimumFractionDigits: 2 },
+  );
+  const header = `Liquidator: ${name}`;
+  const details = `Collateral: ${collateral}\nFToken: ${fToken}\nSwap Quantity: ${swapQuantityStr}\nTx Hash: 0x${txHash}`;
+  postMessage(dryRun, 'Swap Initiated', header, details, 3447003);
+}
+
+export async function postSwapUnconfirmed(
+  dryRun: boolean,
+  name: string,
+  collateral: string,
+  fToken: string,
+) {
+  const header = `Liquidator: ${name}`;
+  const details = `Collateral: ${collateral}\nFToken: ${fToken}`;
+  postMessage(dryRun, 'Swap Unconfirmed', header, details, 16776960);
+}
+
+export async function postSwapSuccess(
+  dryRun: boolean,
+  name: string,
+  collateral: string,
+  fToken: string,
+  fTokenQuantity: number,
+  collateralQuantity: number,
+) {
+  const fTokenQuantityStr = fTokenQuantity.toLocaleString(
+    undefined,
+    { maximumFractionDigits: 2, minimumFractionDigits: 2 },
+  );
+  const collateralQuantityStr = collateralQuantity.toLocaleString(
+    undefined,
+    { maximumFractionDigits: 2, minimumFractionDigits: 2 },
+  );
+  const header = `Liquidator: ${name}`;
+  const details = `Collateral: ${collateral}\nFToken: ${fToken}\nFToken Quantity: ${fTokenQuantityStr}\nCollateral Quantity: ${collateralQuantityStr}`;
+  postMessage(dryRun, 'Swap Successful', header, details, 5763719);
+}
+
+export async function postSwapFailure(
+  dryRun: boolean,
+  name: string,
+  collateral: string,
+  fToken: string,
+) {
+  const header = `Liquidator: ${name}`;
+  const details = `Collateral: ${collateral}\nFToken: ${fToken}`;
+  postMessage(dryRun, 'Swap Failed', header, details, 15548997);
+}
+
 export async function postLowBalance(
   dryRun: boolean,
   name: string,

@@ -60,6 +60,12 @@ const config = convict({
     arg: 'vaultScriptHash',
     env: 'VAULT_SCRIPT_HASH',
   },
+  routerScriptHash: {
+    format: String,
+    default: '',
+    arg: 'routerScriptHash',
+    env: 'ROUTER_SCRIPT_HASH',
+  },
   fTokenScriptHash: {
     format: String,
     default: '',
@@ -89,6 +95,18 @@ const config = convict({
     default: 0,
     arg: 'lowBalanceThreshold',
     env: 'LOW_BALANCE_THRESHOLD',
+  },
+  autoSwap: {
+    format: Boolean,
+    default: false,
+    arg: 'autoSwap',
+    env: 'AUTO_SWAP',
+  },
+  swapThreshold: {
+    format: Number,
+    default: 0,
+    arg: 'swapThreshold',
+    env: 'SWAP_THRESHOLD',
   },
   verifyWaitMillis: {
     format: Number,
