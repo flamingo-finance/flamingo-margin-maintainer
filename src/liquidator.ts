@@ -21,6 +21,7 @@ const COLLATERAL_SCRIPT_HASH = properties.collateralScriptHash;
 const ON_CHAIN_PRICE_ONLY = properties.onChainPriceOnly;
 const ON_CHAIN_PRICE_DECIMALS = 20;
 const LIQUIDATOR_NAME = properties.liquidatorName;
+const LIQUIDATE_THRESHOLD = properties.liquidateThreshold;
 const LOW_BALANCE_THRESHOLD = properties.lowBalanceThreshold;
 const MAX_PAGE_SIZE = properties.maxPageSize;
 const AUTO_SWAP = properties.autoSwap;
@@ -151,8 +152,6 @@ async function flamingoSwap(
   notification: NeoNotification,
   fromToken: string,
   toToken: string,
-  fromSymbol: string,
-  toSymbol: string,
 ) {
   const fromBalance = await DapiUtils.getBalance(fromToken, OWNER);
 
@@ -164,20 +163,11 @@ async function flamingoSwap(
       0,
       OWNER,
     );
-    await DapiUtils.checkNetworkFee(transaction);
-    await DapiUtils.checkSystemFee(transaction);
     const scaledFromBalance = fromBalance / COLLATERAL_MULTIPLIER;
     WebhookUtils.postSwapInitiated(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledFromBalance, transaction.hash());
-    if (DRY_RUN) {
-      logger.info(`Not submitting flamingoSwap(${fromSymbol}, ${toSymbol}) `
-                 + `transaction due to dry run with: fromBalance=${fromBalance}`);
-    } else {
-      logger.info(`Submitting flamingoSwap(${fromSymbol}, ${toSymbol}) `
-                 + `transaction with: fromBalance=${fromBalance}`);
-      const swapComplete = confirmFlamingoSwap(notification, toToken, fromBalance);
-      await DapiUtils.performTransfer(transaction, OWNER);
-      await swapComplete;
-    }
+    await submitTransaction(transaction, `FlamingoSwapRouter::swapTokenInForTokenOut(${fromToken}, ${toToken})`);
+    const swapComplete = confirmFlamingoSwap(notification, toToken, fromBalance);
+    await swapComplete;
   } catch (e) {
     logger.error('Failed to submit flamingoSwap transaction - your funds have not been sent');
     logger.error(e);
@@ -288,19 +278,29 @@ async function attemptLiquidation(
   logger.debug(`Attempting liquidation: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL}, FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
 
   if (loanToValue > MAX_LOAN_TO_VALUE) {
-    logger.info(`Liquidating: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
     const liquidateQuantity = computeLiquidateQuantity(fTokenBalance, vault, priceData);
-    try {
-      await liquidate(notification, vault.account, liquidateQuantity, priceData);
-      return true;
-    } catch (e) {
-      logger.error('Failed to liquidate - your funds have not been sent');
-      logger.error(e);
-      WebhookUtils.postLiquidateFailure(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
+    const scaledLiquidateQuantity = liquidateQuantity / FTOKEN_MULTIPLIER;
+    if (scaledLiquidateQuantity > LIQUIDATE_THRESHOLD) {
+      logger.info(`Liquidating: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
+      try {
+        await liquidate(notification, vault.account, liquidateQuantity, priceData);
+        return true;
+      } catch (e) {
+        logger.error('Failed to liquidate - your funds have not been sent');
+        logger.error(e);
+        WebhookUtils.postLiquidateFailure(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
+        return false;
+      }
+    } else {
+      logger.debug(`Did not liquidate: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL},`
+          + ` FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`
+          + ` because liquidateQuantity=${scaledLiquidateQuantity} < LIQUIDATE_THRESHOLD=${LIQUIDATE_THRESHOLD}`);
       return false;
     }
   } else {
-    logger.debug(`Did not liquidate: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL}, FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
+    logger.debug(`Did not liquidate: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL},`
+        + ` FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`
+        + ` because loanToValue=${loanToValue} < MAX_LOAN_TO_VALUE=${MAX_LOAN_TO_VALUE}`);
     return false;
   }
 }
@@ -381,7 +381,7 @@ function sleep(millis: number) {
 
     // 4. Swap collateral back to FToken if desired
     if (AUTO_SWAP && collateralBalance > SWAP_THRESHOLD) {
-      await flamingoSwap(notification, COLLATERAL_SCRIPT_HASH, FTOKEN_SCRIPT_HASH, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
+      await flamingoSwap(notification, COLLATERAL_SCRIPT_HASH, FTOKEN_SCRIPT_HASH);
     }
 
     // 5. Rest after a job well done

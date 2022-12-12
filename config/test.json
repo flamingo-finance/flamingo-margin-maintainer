@@ -9,6 +9,7 @@
   "collateralScriptHash": "0x85deac50febfd93988d3f391dea54e8289e43e9e",
   "webhookUrl": "",
   "liquidatorName": "Flamingo Vulture",
+  "liquidateThreshold": 0,
   "lowBalanceThreshold": 100000,
   "autoSwap": true,
   "swapThreshold": 100,

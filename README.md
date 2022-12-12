@@ -33,6 +33,7 @@ As of Nov 14, 2022, flamingo-liquidator loops through the following cycle:
 | `COLLATERAL_SCRIPT_HASH` | The hash of the collateral that you would like to receive through liquidation. |
 | `WEBHOOK_URL` | A webhook URL that allows you to post notifications to a Discord server you own. Please refer to [Discord Webhooks](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks). |
 | `LIQUIDATOR_NAME` | The name that is used when webhook messages are posted to disambiguate your process from others. |
+| `LIQUIDATE_THRESHOLD` | The minimum liquidation quantity, expressed in FTokens. Liquidations smaller than this quantity will not be performed. |
 | `LOW_BALANCE_THRESHOLD` | The balance under which the process will log a WARN and post an alert to the webhook URL, if specified. |
 | `AUTO_SWAP` | Automatically swap collateral into FToken if `collateral balance > SWAP_THRESHOLD`. |
 | `SWAP_THRESHOLD` | Automatically swap collateral into FToken if `collateral balance > SWAP_THRESHOLD`. |

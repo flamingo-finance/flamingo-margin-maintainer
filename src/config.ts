@@ -90,6 +90,12 @@ const config = convict({
     arg: 'liquidatorName',
     env: 'LIQUIDATOR_NAME',
   },
+  liquidateThreshold: {
+    format: Number,
+    default: 0,
+    arg: 'liquidateThreshold',
+    env: 'LIQUIDATE_THRESHOLD',
+  },
   lowBalanceThreshold: {
     format: Number,
     default: 0,
