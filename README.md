@@ -1,5 +1,8 @@
 # README #
 
+### Disclaimer ###
+flamingo-liquidator is provided "as-is", without warranty of any kind. You may modify and use this software freely as you wish, but Flamingo Finance is not responsible for any of its behavior or their consequences, intended or otherwise.
+
 ### Introduction ###
 flamingo-liquidator is a liquidation bot for Flamingo FUSD.
 
