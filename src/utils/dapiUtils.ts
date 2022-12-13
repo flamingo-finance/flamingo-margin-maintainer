@@ -19,6 +19,8 @@ const RPC_CLIENT = new rpc.RPCClient(RPC_NODE_URL);
 const NETWORK_MAGIC = properties.networkMagic;
 
 // Script hashes
+export const FLM_SCRIPT_HASH = properties.flmScriptHash;
+export const FLUND_SCRIPT_HASH = properties.flundScriptHash;
 export const ROUTER_SCRIPT_HASH: string = properties.routerScriptHash;
 export const VAULT_SCRIPT_HASH: string = properties.vaultScriptHash;
 export const PRICE_URL: string = properties.priceUrl;
@@ -227,6 +229,21 @@ async function createTransactionCustomContracts(
   logger.debug(`Transaction created: contractHash=${contractHash}, operation=${operation}, `
     + `params=${JSON.stringify(params)}, account=${account.address}`);
   return transaction;
+}
+
+export async function exitFlund(
+  quantity: number,
+  account: wallet.Account,
+) {
+  return createTransaction(
+    FLUND_SCRIPT_HASH,
+    'withdraw',
+    [
+      sc.ContractParam.integer(quantity),
+      sc.ContractParam.hash160(account.address),
+    ],
+    account,
+  );
 }
 
 export async function liquidateOCP(

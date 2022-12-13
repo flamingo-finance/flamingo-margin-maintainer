@@ -66,6 +66,18 @@ const config = convict({
     arg: 'routerScriptHash',
     env: 'ROUTER_SCRIPT_HASH',
   },
+  flmScriptHash: {
+    format: String,
+    default: '',
+    arg: 'flmScriptHash',
+    env: 'FLM_SCRIPT_HASH',
+  },
+  flundScriptHash: {
+    format: String,
+    default: '',
+    arg: 'flundScriptHash',
+    env: 'FLUND_SCRIPT_HASH',
+  },
   fTokenScriptHash: {
     format: String,
     default: '',

@@ -115,8 +115,8 @@ export async function postLiquidateFailure(
 export async function postSwapInitiated(
   dryRun: boolean,
   name: string,
-  collateral: string,
-  fToken: string,
+  inToken: string,
+  outToken: string,
   swapQuantity: number,
   txHash: string,
 ) {
@@ -125,51 +125,108 @@ export async function postSwapInitiated(
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
   const header = `Liquidator: ${name}`;
-  const details = `Collateral: ${collateral}\nFToken: ${fToken}\nSwap Quantity: ${swapQuantityStr}\nTx Hash: 0x${txHash}`;
+  const details = `Swap In: ${inToken}\nSwap Out: ${outToken}\nSwap Quantity: ${swapQuantityStr}\nTx Hash: 0x${txHash}`;
   postMessage(dryRun, 'Swap Initiated', header, details, 3447003);
 }
 
 export async function postSwapUnconfirmed(
   dryRun: boolean,
   name: string,
-  collateral: string,
-  fToken: string,
+  inToken: string,
+  outToken: string,
 ) {
   const header = `Liquidator: ${name}`;
-  const details = `Collateral: ${collateral}\nFToken: ${fToken}`;
+  const details = `Swap In: ${inToken}\nSwap Out: ${outToken}`;
   postMessage(dryRun, 'Swap Unconfirmed', header, details, 16776960);
 }
 
 export async function postSwapSuccess(
   dryRun: boolean,
   name: string,
-  collateral: string,
-  fToken: string,
-  fTokenQuantity: number,
-  collateralQuantity: number,
+  inToken: string,
+  outToken: string,
+  inQuantity: number,
+  outQuantity: number,
 ) {
-  const fTokenQuantityStr = fTokenQuantity.toLocaleString(
+  const inQuantityStr = inQuantity.toLocaleString(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
-  const collateralQuantityStr = collateralQuantity.toLocaleString(
+  const outQuantityStr = outQuantity.toLocaleString(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
   const header = `Liquidator: ${name}`;
-  const details = `Collateral: ${collateral}\nFToken: ${fToken}\nFToken Quantity: ${fTokenQuantityStr}\nCollateral Quantity: ${collateralQuantityStr}`;
+  const details = `Swap In: ${inToken}\nSwap Out: ${outToken}\nIn Quantity: ${inQuantityStr}\nOut Quantity: ${outQuantityStr}`;
   postMessage(dryRun, 'Swap Successful', header, details, 5763719);
 }
 
 export async function postSwapFailure(
   dryRun: boolean,
   name: string,
-  collateral: string,
-  fToken: string,
+  inToken: string,
+  outToken: string,
 ) {
   const header = `Liquidator: ${name}`;
-  const details = `Collateral: ${collateral}\nFToken: ${fToken}`;
+  const details = `Swap In: ${inToken}\nSwap Out: ${outToken}`;
   postMessage(dryRun, 'Swap Failed', header, details, 15548997);
+}
+
+export async function postExitInitiated(
+  dryRun: boolean,
+  name: string,
+  flund: string,
+  swapQuantity: number,
+  txHash: string,
+) {
+  const swapQuantityStr = swapQuantity.toLocaleString(
+    undefined,
+    { maximumFractionDigits: 2, minimumFractionDigits: 2 },
+  );
+  const header = `Liquidator: ${name}`;
+  const details = `Exit Token: ${flund}\nExit Quantity: ${swapQuantityStr}\nTx Hash: 0x${txHash}`;
+  postMessage(dryRun, 'Exit Initiated', header, details, 3447003);
+}
+
+export async function postExitUnconfirmed(
+  dryRun: boolean,
+  name: string,
+  flund: string,
+) {
+  const header = `Liquidator: ${name}`;
+  const details = `Exit Token: ${flund}`;
+  postMessage(dryRun, 'Exit Unconfirmed', header, details, 16776960);
+}
+
+export async function postExitSuccess(
+  dryRun: boolean,
+  name: string,
+  flund: string,
+  flm: string,
+  flundQuantity: number,
+  flmQuantity: number,
+) {
+  const flundQuantityStr = flundQuantity.toLocaleString(
+    undefined,
+    { maximumFractionDigits: 2, minimumFractionDigits: 2 },
+  );
+  const flmQuantityStr = flmQuantity.toLocaleString(
+    undefined,
+    { maximumFractionDigits: 2, minimumFractionDigits: 2 },
+  );
+  const header = `Liquidator: ${name}`;
+  const details = `${flund} Quantity: ${flundQuantityStr}\n${flm} Quantity: ${flmQuantityStr}`;
+  postMessage(dryRun, 'Exit Successful', header, details, 5763719);
+}
+
+export async function postExitFailure(
+  dryRun: boolean,
+  name: string,
+  flund: string,
+) {
+  const header = `Liquidator: ${name}`;
+  const details = `Exit Token: ${flund}`;
+  postMessage(dryRun, 'Exit Failed', header, details, 15548997);
 }
 
 export async function postLowBalance(
