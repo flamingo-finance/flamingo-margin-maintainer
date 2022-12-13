@@ -412,6 +412,7 @@ export async function performTransfer(transaction: tx.Transaction, account: wall
     u.HexString.fromHex(signedTransaction.serialize(true)),
   );
   logger.info(`Transaction hash: ${result}`);
+  return result;
 }
 
 export function base64MatchesAddress(base64Hash: string, address: string) {

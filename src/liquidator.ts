@@ -161,8 +161,8 @@ async function exitFlund(
   try {
     const transaction = await DapiUtils.exitFlund(flundBalance, OWNER);
     const scaledFlundBalance = flundBalance / FLUND_MULTIPLIER;
-    WebhookUtils.postExitInitiated(DRY_RUN, LIQUIDATOR_NAME, FLUND_SYMBOL, scaledFlundBalance, transaction.hash());
-    await submitTransaction(transaction, 'FLUND::withdraw()');
+    const txHash = await submitTransaction(transaction, 'FLUND::withdraw()') as string;
+    WebhookUtils.postExitInitiated(DRY_RUN, LIQUIDATOR_NAME, FLUND_SYMBOL, scaledFlundBalance, txHash);
     const exitComplete = confirmExitFlund(notification, flundBalance);
     await exitComplete;
   } catch (e) {
@@ -235,8 +235,8 @@ async function flamingoSwap(
       OWNER,
     );
     const scaledFromBalance = fromBalance / COLLATERAL_MULTIPLIER;
-    WebhookUtils.postSwapInitiated(DRY_RUN, LIQUIDATOR_NAME, fromSymbol, FTOKEN_SYMBOL, scaledFromBalance, transaction.hash());
-    await submitTransaction(transaction, `FlamingoSwapRouter::swapTokenInForTokenOut(${fromToken}, ${toToken})`);
+    const txHash = await submitTransaction(transaction, `FlamingoSwapRouter::swapTokenInForTokenOut(${fromToken}, ${toToken})`) as string;
+    WebhookUtils.postSwapInitiated(DRY_RUN, LIQUIDATOR_NAME, fromSymbol, FTOKEN_SYMBOL, scaledFromBalance, txHash);
     const swapComplete = confirmFlamingoSwap(notification, toToken, fromBalance, fromSymbol, fromMultiplier);
     await swapComplete;
   } catch (e) {
@@ -327,15 +327,15 @@ async function liquidate(
 ) {
   const liquidateComplete = confirmLiquidate(notification, liquidatee);
   const scaledLiquidateQuantity = liquidateQuantity / FTOKEN_MULTIPLIER;
+  let txHash;
   if (ON_CHAIN_PRICE_ONLY) {
     const transaction = await DapiUtils.liquidateOCP(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, liquidatee, liquidateQuantity, OWNER);
-    WebhookUtils.postLiquidateInitiated(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledLiquidateQuantity, transaction.hash());
-    await submitTransaction(transaction, `Vault::liquidateOCP(${FTOKEN_SCRIPT_HASH}, ${COLLATERAL_SCRIPT_HASH})`);
+    txHash = await submitTransaction(transaction, `Vault::liquidateOCP(${FTOKEN_SCRIPT_HASH}, ${COLLATERAL_SCRIPT_HASH})`) as string;
   } else {
     const transaction = await DapiUtils.liquidate(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, liquidatee, liquidateQuantity, priceData.payload, priceData.signature, OWNER);
-    WebhookUtils.postLiquidateInitiated(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledLiquidateQuantity, transaction.hash());
-    await submitTransaction(transaction, `Vault::liquidate(${FTOKEN_SCRIPT_HASH}, ${COLLATERAL_SCRIPT_HASH})`);
+    txHash = await submitTransaction(transaction, `Vault::liquidate(${FTOKEN_SCRIPT_HASH}, ${COLLATERAL_SCRIPT_HASH})`) as string;
   }
+  WebhookUtils.postLiquidateInitiated(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledLiquidateQuantity, txHash);
   await liquidateComplete;
 }
 

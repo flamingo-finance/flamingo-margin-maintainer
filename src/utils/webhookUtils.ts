@@ -65,7 +65,7 @@ export async function postLiquidateInitiated(
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
   const header = `Liquidator: ${name}`;
-  const details = `Collateral: ${collateral}\nFToken: ${fToken}\nLiquidate Quantity: ${liquidateQuantityStr}\nTx Hash: 0x${txHash}`;
+  const details = `Collateral: ${collateral}\nFToken: ${fToken}\nLiquidate Quantity: ${liquidateQuantityStr}\nTx Hash: ${txHash}`;
   postMessage(dryRun, 'Liquidation Initiated', header, details, 3447003);
 }
 
@@ -125,7 +125,7 @@ export async function postSwapInitiated(
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
   const header = `Liquidator: ${name}`;
-  const details = `Swap In: ${inToken}\nSwap Out: ${outToken}\nSwap Quantity: ${swapQuantityStr}\nTx Hash: 0x${txHash}`;
+  const details = `Swap In: ${inToken}\nSwap Out: ${outToken}\nSwap Quantity: ${swapQuantityStr}\nTx Hash: ${txHash}`;
   postMessage(dryRun, 'Swap Initiated', header, details, 3447003);
 }
 
@@ -184,7 +184,7 @@ export async function postExitInitiated(
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
   const header = `Liquidator: ${name}`;
-  const details = `Exit Token: ${flund}\nExit Quantity: ${swapQuantityStr}\nTx Hash: 0x${txHash}`;
+  const details = `Exit Token: ${flund}\nExit Quantity: ${swapQuantityStr}\nTx Hash: ${txHash}`;
   postMessage(dryRun, 'Exit Initiated', header, details, 3447003);
 }
 
