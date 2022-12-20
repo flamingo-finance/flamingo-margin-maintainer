@@ -96,17 +96,17 @@ const config = convict({
     arg: 'webhookUrl',
     env: 'WEB_HOOK_URL',
   },
-  liquidatorName: {
+  maintainerName: {
     format: String,
     default: '',
-    arg: 'liquidatorName',
-    env: 'LIQUIDATOR_NAME',
+    arg: 'maintainerName',
+    env: 'MAINTAINER_NAME',
   },
-  liquidateThreshold: {
+  maintenanceThreshold: {
     format: Number,
     default: 0,
-    arg: 'liquidateThreshold',
-    env: 'LIQUIDATE_THRESHOLD',
+    arg: 'maintenanceThreshold',
+    env: 'MAINTENANCE_THRESHOLD',
   },
   lowBalanceThreshold: {
     format: Number,

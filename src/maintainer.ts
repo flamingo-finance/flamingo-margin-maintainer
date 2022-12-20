@@ -7,7 +7,7 @@ import { RawData } from 'ws';
 import { config } from './config';
 import { logger } from './utils/loggingUtils';
 
-import { AccountVaultBalance, DapiUtils } from './utils/dapiUtils';
+import { AccountVaultBalance, DapiUtils, MAINTAIN_COLLATERAL } from './utils/dapiUtils';
 import { NeoNotification, NeoNotificationInit } from './utils/notificationUtils';
 import { WebhookUtils } from './utils/webhookUtils';
 
@@ -20,8 +20,8 @@ const FTOKEN_SCRIPT_HASH = properties.fTokenScriptHash;
 const COLLATERAL_SCRIPT_HASH = properties.collateralScriptHash;
 const ON_CHAIN_PRICE_ONLY = properties.onChainPriceOnly;
 const ON_CHAIN_PRICE_DECIMALS = 20;
-const LIQUIDATOR_NAME = properties.liquidatorName;
-const LIQUIDATE_THRESHOLD = properties.liquidateThreshold;
+const MAINTAINER_NAME = properties.maintainerName;
+const MAINTENANCE_THRESHOLD = properties.maintenanceThreshold;
 const LOW_BALANCE_THRESHOLD = properties.lowBalanceThreshold;
 const MAX_PAGE_SIZE = properties.maxPageSize;
 const AUTO_SWAP = properties.autoSwap;
@@ -39,8 +39,8 @@ let FLM_MULTIPLIER: number;
 let FLUND_SYMBOL: string;
 let FLUND_MULTIPLIER: number;
 let MAX_LOAN_TO_VALUE: number;
-let LIQUIDATION_LIMIT: number;
-let LIQUIDATION_BONUS: number;
+let MAINTENANCE_LIMIT: number;
+let MAINTENANCE_BONUS: number;
 
 interface PriceData {
   payload: string;
@@ -123,7 +123,7 @@ async function confirmExitFlund(notification: NeoNotification, inQuantity: numbe
     // eslint-disable-next-line no-use-before-define
     notification.offCallback(exitSuccess);
     exitResolve(false);
-    WebhookUtils.postExitUnconfirmed(DRY_RUN, LIQUIDATOR_NAME, FLUND_SYMBOL);
+    WebhookUtils.postExitUnconfirmed(DRY_RUN, MAINTAINER_NAME, FLUND_SYMBOL);
   }, VERIFY_WAIT_MILLIS);
 
   async function exitSuccess(
@@ -145,7 +145,7 @@ async function confirmExitFlund(notification: NeoNotification, inQuantity: numbe
         logger.info(`FLUND exit ${txid} successful`);
         const scaledInQuantity = inQuantity / FLUND_MULTIPLIER;
         const scaledOutQuantity = outQuantity / FLM_MULTIPLIER;
-        WebhookUtils.postExitSuccess(DRY_RUN, LIQUIDATOR_NAME, FLUND_SYMBOL, FLM_SYMBOL, scaledInQuantity, scaledOutQuantity);
+        WebhookUtils.postExitSuccess(DRY_RUN, MAINTAINER_NAME, FLUND_SYMBOL, FLM_SYMBOL, scaledInQuantity, scaledOutQuantity);
       }
     }
   }
@@ -162,13 +162,13 @@ async function exitFlund(
     const transaction = await DapiUtils.exitFlund(flundBalance, OWNER);
     const scaledFlundBalance = flundBalance / FLUND_MULTIPLIER;
     const txHash = await submitTransaction(transaction, 'FLUND::withdraw()') as string;
-    WebhookUtils.postExitInitiated(DRY_RUN, LIQUIDATOR_NAME, FLUND_SYMBOL, scaledFlundBalance, txHash);
+    WebhookUtils.postExitInitiated(DRY_RUN, MAINTAINER_NAME, FLUND_SYMBOL, scaledFlundBalance, txHash);
     const exitComplete = confirmExitFlund(notification, flundBalance);
     await exitComplete;
   } catch (e) {
     logger.error('Failed to submit exitFlund transaction - your funds have not been sent');
     logger.error(e);
-    WebhookUtils.postExitFailure(DRY_RUN, LIQUIDATOR_NAME, FLUND_SYMBOL);
+    WebhookUtils.postExitFailure(DRY_RUN, MAINTAINER_NAME, FLUND_SYMBOL);
   }
 }
 async function confirmFlamingoSwap(
@@ -188,7 +188,7 @@ async function confirmFlamingoSwap(
     // eslint-disable-next-line no-use-before-define
     notification.offCallback(swapSuccess);
     swapResolve(false);
-    WebhookUtils.postSwapUnconfirmed(DRY_RUN, LIQUIDATOR_NAME, fromSymbol, FTOKEN_SYMBOL);
+    WebhookUtils.postSwapUnconfirmed(DRY_RUN, MAINTAINER_NAME, fromSymbol, FTOKEN_SYMBOL);
   }, VERIFY_WAIT_MILLIS);
 
   async function swapSuccess(
@@ -209,7 +209,7 @@ async function confirmFlamingoSwap(
         logger.info(`Flamingo swap ${txid} successful`);
         const scaledInQuantity = inQuantity / fromMultiplier;
         const scaledOutQuantity = outQuantity / FTOKEN_MULTIPLIER;
-        WebhookUtils.postSwapSuccess(DRY_RUN, LIQUIDATOR_NAME, fromSymbol, FTOKEN_SYMBOL, scaledInQuantity, scaledOutQuantity);
+        WebhookUtils.postSwapSuccess(DRY_RUN, MAINTAINER_NAME, fromSymbol, FTOKEN_SYMBOL, scaledInQuantity, scaledOutQuantity);
       }
     }
   }
@@ -236,140 +236,140 @@ async function flamingoSwap(
     );
     const scaledFromBalance = fromBalance / COLLATERAL_MULTIPLIER;
     const txHash = await submitTransaction(transaction, `FlamingoSwapRouter::swapTokenInForTokenOut(${fromToken}, ${toToken})`) as string;
-    WebhookUtils.postSwapInitiated(DRY_RUN, LIQUIDATOR_NAME, fromSymbol, FTOKEN_SYMBOL, scaledFromBalance, txHash);
+    WebhookUtils.postSwapInitiated(DRY_RUN, MAINTAINER_NAME, fromSymbol, FTOKEN_SYMBOL, scaledFromBalance, txHash);
     const swapComplete = confirmFlamingoSwap(notification, toToken, fromBalance, fromSymbol, fromMultiplier);
     await swapComplete;
   } catch (e) {
     logger.error('Failed to submit flamingoSwap transaction - your funds have not been sent');
     logger.error(e);
-    WebhookUtils.postSwapFailure(DRY_RUN, LIQUIDATOR_NAME, fromSymbol, FTOKEN_SYMBOL);
+    WebhookUtils.postSwapFailure(DRY_RUN, MAINTAINER_NAME, fromSymbol, FTOKEN_SYMBOL);
   }
 }
 
-function computeLiquidateQuantity(fTokenBalance: number, vault: AccountVaultBalance, priceData: PriceData) {
-  const maxFTokenQuantity = (LIQUIDATION_LIMIT * vault.fTokenBalance) / 100;
+function computeMaintenanceQuantity(fTokenBalance: number, vault: AccountVaultBalance, priceData: PriceData) {
+  const maxFTokenQuantity = (MAINTENANCE_LIMIT * vault.fTokenBalance) / 100;
   // In the unlikely case that the Vault is under-collateralized,
-  // we can only liquidate as much collateral as exists in the Vault
+  // we can only maintain as much collateral as exists in the Vault
   // Since this is rare, we apply a conservative haircut of 90% to avoid an ABORT
-  const maxCollateralQuantity = (90 * vault.collateralBalance) / (100 + LIQUIDATION_BONUS);
+  const maxCollateralQuantity = (90 * vault.collateralBalance) / (100 + MAINTENANCE_BONUS);
   const maxFTokenQuantityFromCollateral = (maxCollateralQuantity * priceData.collateralCombinedPrice * FTOKEN_MULTIPLIER) / (priceData.fTokenPrice * COLLATERAL_MULTIPLIER);
-  const maxLiquidateQuantity = Math.min(maxFTokenQuantity, maxFTokenQuantityFromCollateral);
-  const clippedMaxLiquidateQuantity = Math.floor(Math.min(fTokenBalance, maxLiquidateQuantity));
+  const maxMaintenanceQuantity = Math.min(maxFTokenQuantity, maxFTokenQuantityFromCollateral);
+  const clippedMaxMaintenanceQuantity = Math.floor(Math.min(fTokenBalance, maxMaintenanceQuantity));
 
-  logger.debug(`Computed clippedMaxLiquidateQuantity=${clippedMaxLiquidateQuantity} from`
+  logger.debug(`Computed clippedMaxMaintenanceQuantity=${clippedMaxMaintenanceQuantity} from`
                + ` maxFTokenQuantity=${maxFTokenQuantity}, maxCollateralQuantity=${maxCollateralQuantity},`
-               + ` maxFTokenQuantityFromCollateral=${maxFTokenQuantityFromCollateral}, maxLiquidateQuantity=${maxLiquidateQuantity},`);
-  return clippedMaxLiquidateQuantity;
+               + ` maxFTokenQuantityFromCollateral=${maxFTokenQuantityFromCollateral}, maxMaintenanceQuantity=${maxMaintenanceQuantity},`);
+  return clippedMaxMaintenanceQuantity;
 }
 
 /**
  * Listen to the notification subsystem to determine whether
- * a liquidation was successful
+ * a margin maintenance was successful
  */
-async function confirmLiquidate(
+async function confirmMaintenance(
   notification: NeoNotification,
-  liquidatee: string,
+  maintainee: string,
 ) {
-  let liquidateResolve: Function;
+  let maintainResolve: Function;
   // eslint-disable-next-line no-unused-vars
-  const liquidatePromise = new Promise<string>((resolve, _) => {
-    liquidateResolve = resolve;
+  const maintainPromise = new Promise<string>((resolve, _) => {
+    maintainResolve = resolve;
   });
-  const liquidateFailedT = setTimeout(() => {
-    logger.info(`Liquidation wasn't confirmed after ${VERIFY_WAIT_MILLIS} milliseconds, but may still have succeeded`);
+  const maintainFailedT = setTimeout(() => {
+    logger.info(`Margin maintenance wasn't confirmed after ${VERIFY_WAIT_MILLIS} milliseconds, but may still have succeeded`);
     // eslint-disable-next-line no-use-before-define
-    notification.offCallback(liquidateSuccess);
-    liquidateResolve(false);
-    WebhookUtils.postLiquidateUnconfirmed(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
+    notification.offCallback(maintainSuccess);
+    maintainResolve(false);
+    WebhookUtils.postMaintenanceUnconfirmed(DRY_RUN, MAINTAINER_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
   }, VERIFY_WAIT_MILLIS);
 
-  async function liquidateSuccess(
+  async function maintainSuccess(
     callbackData: RawData,
     isBinary: boolean,
   ): Promise<void> {
     const message = isBinary ? callbackData : callbackData.toString();
     const data = JSON.parse(message as string);
-    if (data.params && data.params[0].eventname === 'LiquidateCollateral') {
+    if (data.params && data.params[0].eventname === MAINTAIN_COLLATERAL) {
       const txid = data.params[0].container;
       const dataState = data.params[0].state;
 
       if (DapiUtils.base64MatchesAddress(dataState.value[2].value, OWNER.address)
        && DapiUtils.base64MatchesScriptHash(dataState.value[0].value, COLLATERAL_SCRIPT_HASH)
        && DapiUtils.base64MatchesScriptHash(dataState.value[1].value, FTOKEN_SCRIPT_HASH)
-       && DapiUtils.base64MatchesScriptHash(dataState.value[3].value, liquidatee)
+       && DapiUtils.base64MatchesScriptHash(dataState.value[3].value, maintainee)
       ) {
-        clearTimeout(liquidateFailedT);
-        liquidateResolve(true);
-        notification.offCallback(liquidateSuccess);
-        logger.info(`Liquidation ${txid} succeeded`);
+        clearTimeout(maintainFailedT);
+        maintainResolve(true);
+        notification.offCallback(maintainSuccess);
+        logger.info(`Maintenance ${txid} succeeded`);
         const fTokenQuantity = (dataState.value[4].value as number) / FTOKEN_MULTIPLIER;
         const collateralQuantity = (dataState.value[5].value as number) / COLLATERAL_MULTIPLIER;
-        WebhookUtils.postLiquidateSuccess(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, fTokenQuantity, collateralQuantity);
+        WebhookUtils.postMaintenanceSuccess(DRY_RUN, MAINTAINER_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, fTokenQuantity, collateralQuantity);
       }
     }
   }
 
-  notification.onCallback(DapiUtils.VAULT_SCRIPT_HASH, 'LiquidateCollateral', liquidateSuccess);
-  return liquidatePromise;
+  notification.onCallback(DapiUtils.VAULT_SCRIPT_HASH, MAINTAIN_COLLATERAL, maintainSuccess);
+  return maintainSuccess;
 }
 
 /**
- * Liquidate a Vault. onChainPriceOnly can be set to true only for whitelisted addresses.
+ * Maintain a Vault's margin. onChainPriceOnly can be set to true only for whitelisted addresses.
  *
- * If onChainPriceOnly is true, we liquidate using only on-chain prices of both the FToken and collateral asset.
+ * If onChainPriceOnly is true, we maintain using only on-chain prices of both the FToken and collateral asset.
  * Otherwise, we use a combination of the on-chain and off-chain price for the collateral asset.
  */
-async function liquidate(
+async function maintainMargin(
   notification: NeoNotification,
-  liquidatee: string,
-  liquidateQuantity: number,
+  maintainee: string,
+  maintainQuantity: number,
   priceData: PriceData,
 ) {
-  const liquidateComplete = confirmLiquidate(notification, liquidatee);
-  const scaledLiquidateQuantity = liquidateQuantity / FTOKEN_MULTIPLIER;
+  const maintainComplete = confirmMaintenance(notification, maintainee);
+  const scaledMaintenanceQuantity = maintainQuantity / FTOKEN_MULTIPLIER;
   let txHash;
   if (ON_CHAIN_PRICE_ONLY) {
-    const transaction = await DapiUtils.liquidateOCP(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, liquidatee, liquidateQuantity, OWNER);
-    txHash = await submitTransaction(transaction, `Vault::liquidateOCP(${FTOKEN_SCRIPT_HASH}, ${COLLATERAL_SCRIPT_HASH})`) as string;
+    const transaction = await DapiUtils.maintainOCP(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, maintainee, maintainQuantity, OWNER);
+    txHash = await submitTransaction(transaction, `Vault::maintainOCP(${FTOKEN_SCRIPT_HASH}, ${COLLATERAL_SCRIPT_HASH})`) as string;
   } else {
-    const transaction = await DapiUtils.liquidate(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, liquidatee, liquidateQuantity, priceData.payload, priceData.signature, OWNER);
-    txHash = await submitTransaction(transaction, `Vault::liquidate(${FTOKEN_SCRIPT_HASH}, ${COLLATERAL_SCRIPT_HASH})`) as string;
+    const transaction = await DapiUtils.maintain(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, maintainee, maintainQuantity, priceData.payload, priceData.signature, OWNER);
+    txHash = await submitTransaction(transaction, `Vault::maintain(${FTOKEN_SCRIPT_HASH}, ${COLLATERAL_SCRIPT_HASH})`) as string;
   }
-  WebhookUtils.postLiquidateInitiated(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledLiquidateQuantity, txHash);
-  await liquidateComplete;
+  WebhookUtils.postMaintenanceInitiated(DRY_RUN, MAINTAINER_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledMaintenanceQuantity, txHash);
+  await maintainComplete;
 }
 
-async function attemptLiquidation(
+async function attemptMarginMaintenance(
   notification: NeoNotification,
   fTokenBalance: number,
   vault: AccountVaultBalance,
   priceData: PriceData,
 ) {
   const loanToValue = computeLoanToValue(vault, priceData);
-  logger.debug(`Attempting liquidation: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL}, FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
+  logger.debug(`Attempting margin maintenance: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL}, FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
 
   if (loanToValue > MAX_LOAN_TO_VALUE) {
-    const liquidateQuantity = computeLiquidateQuantity(fTokenBalance, vault, priceData);
-    const scaledLiquidateQuantity = liquidateQuantity / FTOKEN_MULTIPLIER;
-    if (scaledLiquidateQuantity > LIQUIDATE_THRESHOLD) {
-      logger.info(`Liquidating: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
+    const maintenanceQuantity = computeMaintenanceQuantity(fTokenBalance, vault, priceData);
+    const scaledMaintenanceQuantity = maintenanceQuantity / FTOKEN_MULTIPLIER;
+    if (scaledMaintenanceQuantity > MAINTENANCE_THRESHOLD) {
+      logger.info(`Maintaining margin: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
       try {
-        await liquidate(notification, vault.account, liquidateQuantity, priceData);
+        await maintainMargin(notification, vault.account, maintenanceQuantity, priceData);
         return true;
       } catch (e) {
-        logger.error('Failed to liquidate - your funds have not been sent');
+        logger.error('Failed to maintain margin - your funds have not been sent');
         logger.error(e);
-        WebhookUtils.postLiquidateFailure(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
+        WebhookUtils.postMaintenanceFailure(DRY_RUN, MAINTAINER_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL);
         return false;
       }
     } else {
-      logger.debug(`Did not liquidate: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL},`
+      logger.debug(`Did not maintain margin: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL},`
           + ` FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`
-          + ` because liquidateQuantity=${scaledLiquidateQuantity} < LIQUIDATE_THRESHOLD=${LIQUIDATE_THRESHOLD}`);
+          + ` because maintenanceQuantity=${scaledMaintenanceQuantity} < MAINTENANCE_THRESHOLD=${MAINTENANCE_THRESHOLD}`);
       return false;
     }
   } else {
-    logger.debug(`Did not liquidate: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL},`
+    logger.debug(`Did not maintain margin: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL},`
         + ` FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`
         + ` because loanToValue=${loanToValue} < MAX_LOAN_TO_VALUE=${MAX_LOAN_TO_VALUE}`);
     return false;
@@ -384,7 +384,7 @@ function sleep(millis: number) {
 // Main loop
 (async () => {
   // 0. Wait for initialization
-  logger.info('Starting liquidator...');
+  logger.info('Starting margin maintainer...');
 
   const { address } = OWNER;
   logger.info(`Wallet address=${address}`);
@@ -397,19 +397,19 @@ function sleep(millis: number) {
   FLM_MULTIPLIER = 10 ** (await DapiUtils.decimals(DapiUtils.FLM_SCRIPT_HASH));
   FLUND_SYMBOL = await DapiUtils.symbol(DapiUtils.FLUND_SCRIPT_HASH);
   FLUND_MULTIPLIER = 10 ** (await DapiUtils.decimals(DapiUtils.FLUND_SCRIPT_HASH));
-  LIQUIDATION_LIMIT = await DapiUtils.getLiquidationLimit(COLLATERAL_SCRIPT_HASH);
-  LIQUIDATION_BONUS = await DapiUtils.getLiquidationBonus(COLLATERAL_SCRIPT_HASH);
+  MAINTENANCE_LIMIT = await DapiUtils.getMaintenanceLimit(COLLATERAL_SCRIPT_HASH);
+  MAINTENANCE_BONUS = await DapiUtils.getMaintenanceBonus(COLLATERAL_SCRIPT_HASH);
   MAX_LOAN_TO_VALUE = await DapiUtils.getMaxLoanToValue(COLLATERAL_SCRIPT_HASH);
   const scaledInitialFTokenBalance = await DapiUtils.getBalance(FTOKEN_SCRIPT_HASH, OWNER) / FTOKEN_MULTIPLIER;
 
-  logger.info(`Initialized "${LIQUIDATOR_NAME}" with FToken: ${FTOKEN_SYMBOL}, Collateral: ${COLLATERAL_SYMBOL}, Max LTV: ${MAX_LOAN_TO_VALUE}, Dry Run: ${DRY_RUN}`);
+  logger.info(`Initialized "${MAINTAINER_NAME}" with FToken: ${FTOKEN_SYMBOL}, Collateral: ${COLLATERAL_SYMBOL}, Max LTV: ${MAX_LOAN_TO_VALUE}, Dry Run: ${DRY_RUN}`);
   logger.info(`Initial FToken balance: ${scaledInitialFTokenBalance}`);
-  logger.info(`Liquidation limit: ${LIQUIDATION_LIMIT}`);
+  logger.info(`Maintenance limit: ${MAINTENANCE_LIMIT}`);
 
   const notification = await NeoNotificationInit();
   await notification.available;
 
-  WebhookUtils.postInit(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledInitialFTokenBalance);
+  WebhookUtils.postInit(DRY_RUN, MAINTAINER_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledInitialFTokenBalance);
 
   while (true) {
     const startMillis = new Date().getTime();
@@ -423,29 +423,29 @@ function sleep(millis: number) {
     const scaledFTokenBalance = fTokenBalance / FTOKEN_MULTIPLIER;
     if (scaledFTokenBalance < LOW_BALANCE_THRESHOLD) {
       logger.warn(`Current ${FTOKEN_SYMBOL} balance=${scaledFTokenBalance} < lowBalanceThreshold=${LOW_BALANCE_THRESHOLD}`);
-      WebhookUtils.postLowBalance(DRY_RUN, LIQUIDATOR_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledFTokenBalance, LOW_BALANCE_THRESHOLD);
+      WebhookUtils.postLowBalance(DRY_RUN, MAINTAINER_NAME, COLLATERAL_SYMBOL, FTOKEN_SYMBOL, scaledFTokenBalance, LOW_BALANCE_THRESHOLD);
     }
 
-    // 3. Loop over vaults and liquidate the first possible vault
+    // 3. Loop over vaults and maintain the first possible vault
     let pageNum = 0;
-    let liquidationSuccess = false;
+    let maintenanceSuccess = false;
     while (true) {
       const vaults = (await DapiUtils.getAllVaults(COLLATERAL_SCRIPT_HASH, FTOKEN_SCRIPT_HASH, MAX_PAGE_SIZE, pageNum))
         .sort(() => Math.random() - 0.5);
       for (let i = 0; i < vaults.length; i++) {
         if (vaults[i].collateralBalance > 0) {
-          liquidationSuccess = await attemptLiquidation(
+          maintenanceSuccess = await attemptMarginMaintenance(
             notification,
             fTokenBalance,
             vaults[i],
             priceData,
           );
-          if (liquidationSuccess) {
+          if (maintenanceSuccess) {
             break;
           }
         }
       }
-      if (vaults.length === 0 || liquidationSuccess) {
+      if (vaults.length === 0 || maintenanceSuccess) {
         break;
       }
       pageNum += 1;

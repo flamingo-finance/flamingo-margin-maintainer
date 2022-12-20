@@ -25,6 +25,8 @@ export const ROUTER_SCRIPT_HASH: string = properties.routerScriptHash;
 export const VAULT_SCRIPT_HASH: string = properties.vaultScriptHash;
 export const PRICE_URL: string = properties.priceUrl;
 
+export const MAINTAIN_COLLATERAL: string = 'LiquidateCollateral';
+
 export interface VaultBalance {
   collateralHash: string;
   fTokenHash: string;
@@ -101,7 +103,7 @@ export async function getMaxLoanToValue(collateralHash: string) {
   ).then((ret) => parseInt(ret as unknown as string, 10));
 }
 
-export async function getLiquidationLimit(collateralHash: string) {
+export async function getMaintenanceLimit(collateralHash: string) {
   return genericReadCall(
     VAULT_SCRIPT_HASH,
     'getLiquidationLimit',
@@ -111,7 +113,7 @@ export async function getLiquidationLimit(collateralHash: string) {
   ).then((ret) => parseInt(ret as unknown as string, 10));
 }
 
-export async function getLiquidationBonus(collateralHash: string) {
+export async function getMaintenanceBonus(collateralHash: string) {
   return genericReadCall(
     VAULT_SCRIPT_HASH,
     'getLiquidationBonus',
@@ -246,10 +248,10 @@ export async function exitFlund(
   );
 }
 
-export async function liquidateOCP(
+export async function maintainOCP(
   fTokenHash: string,
   collateralHash: string,
-  liquidatee: string,
+  maintainee: string,
   quantity: number,
   account: wallet.Account,
 ) {
@@ -263,17 +265,17 @@ export async function liquidateOCP(
       sc.ContractParam.array(...[
         sc.ContractParam.string('LIQUIDATE_OCP'),
         sc.ContractParam.hash160(collateralHash),
-        sc.ContractParam.hash160(liquidatee),
+        sc.ContractParam.hash160(maintainee),
       ]),
     ],
     account,
   );
 }
 
-export async function liquidate(
+export async function maintain(
   fTokenHash: string,
   collateralHash: string,
-  liquidatee: string,
+  maintainee: string,
   quantity: number,
   priceFeed: string,
   signature: string,
@@ -289,7 +291,7 @@ export async function liquidate(
       sc.ContractParam.array(...[
         sc.ContractParam.string('LIQUIDATE'),
         sc.ContractParam.hash160(collateralHash),
-        sc.ContractParam.hash160(liquidatee),
+        sc.ContractParam.hash160(maintainee),
         sc.ContractParam.string(priceFeed),
         sc.ContractParam.string(signature),
       ]),

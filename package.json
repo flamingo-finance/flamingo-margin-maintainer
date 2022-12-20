@@ -1,11 +1,11 @@
 {
-  "name": "flamingo-liquidator",
-  "version": "0.9.9",
+  "name": "flamingo-margin-maintainer",
+  "version": "0.9.11",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "liquidator-dev": "npx ts-node ./src/liquidator.ts",
-    "liquidator": "node ./dist/liquidator.js",
+    "maintainer-dev": "npx ts-node ./src/maintainer.ts",
+    "maintainer": "node ./dist/maintainer.js",
     "build": "tsc --project ./",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint . --ext .ts,"

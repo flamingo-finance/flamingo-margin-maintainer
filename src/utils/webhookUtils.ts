@@ -47,40 +47,40 @@ export async function postInit(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}\nFToken Balance: ${balanceStr}`;
-  postMessage(dryRun, 'Initialized Liquidator', header, details, 3447003);
+  postMessage(dryRun, 'Initialized Maintainer', header, details, 3447003);
 }
 
-export async function postLiquidateInitiated(
+export async function postMaintenanceInitiated(
   dryRun: boolean,
   name: string,
   collateral: string,
   fToken: string,
-  liquidateQuantity: number,
+  maintenanceQuantity: number,
   txHash: string,
 ) {
-  const liquidateQuantityStr = liquidateQuantity.toLocaleString(
+  const maintenanceQuantityStr = maintenanceQuantity.toLocaleString(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
-  const header = `Liquidator: ${name}`;
-  const details = `Collateral: ${collateral}\nFToken: ${fToken}\nLiquidate Quantity: ${liquidateQuantityStr}\nTx Hash: ${txHash}`;
-  postMessage(dryRun, 'Liquidation Initiated', header, details, 3447003);
+  const header = `Maintainer: ${name}`;
+  const details = `Collateral: ${collateral}\nFToken: ${fToken}\nMaintenance Quantity: ${maintenanceQuantityStr}\nTx Hash: ${txHash}`;
+  postMessage(dryRun, 'Maintenance Initiated', header, details, 3447003);
 }
 
-export async function postLiquidateUnconfirmed(
+export async function postMaintenanceUnconfirmed(
   dryRun: boolean,
   name: string,
   collateral: string,
   fToken: string,
 ) {
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}`;
-  postMessage(dryRun, 'Liquidation Unconfirmed', header, details, 16776960);
+  postMessage(dryRun, 'Maintenance Unconfirmed', header, details, 16776960);
 }
 
-export async function postLiquidateSuccess(
+export async function postMaintenanceSuccess(
   dryRun: boolean,
   name: string,
   collateral: string,
@@ -96,20 +96,20 @@ export async function postLiquidateSuccess(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}\nFToken Quantity: ${fTokenQuantityStr}\nCollateral Quantity: ${collateralQuantityStr}`;
-  postMessage(dryRun, 'Liquidation Successful', header, details, 5763719);
+  postMessage(dryRun, 'Maintenance Successful', header, details, 5763719);
 }
 
-export async function postLiquidateFailure(
+export async function postMaintenanceFailure(
   dryRun: boolean,
   name: string,
   collateral: string,
   fToken: string,
 ) {
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}`;
-  postMessage(dryRun, 'Liquidation Failed', header, details, 15548997);
+  postMessage(dryRun, 'Maintenance Failed', header, details, 15548997);
 }
 
 export async function postSwapInitiated(
@@ -124,7 +124,7 @@ export async function postSwapInitiated(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Swap In: ${inToken}\nSwap Out: ${outToken}\nSwap Quantity: ${swapQuantityStr}\nTx Hash: ${txHash}`;
   postMessage(dryRun, 'Swap Initiated', header, details, 3447003);
 }
@@ -135,7 +135,7 @@ export async function postSwapUnconfirmed(
   inToken: string,
   outToken: string,
 ) {
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Swap In: ${inToken}\nSwap Out: ${outToken}`;
   postMessage(dryRun, 'Swap Unconfirmed', header, details, 16776960);
 }
@@ -156,7 +156,7 @@ export async function postSwapSuccess(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Swap In: ${inToken}\nSwap Out: ${outToken}\nIn Quantity: ${inQuantityStr}\nOut Quantity: ${outQuantityStr}`;
   postMessage(dryRun, 'Swap Successful', header, details, 5763719);
 }
@@ -167,7 +167,7 @@ export async function postSwapFailure(
   inToken: string,
   outToken: string,
 ) {
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Swap In: ${inToken}\nSwap Out: ${outToken}`;
   postMessage(dryRun, 'Swap Failed', header, details, 15548997);
 }
@@ -183,7 +183,7 @@ export async function postExitInitiated(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Exit Token: ${flund}\nExit Quantity: ${swapQuantityStr}\nTx Hash: ${txHash}`;
   postMessage(dryRun, 'Exit Initiated', header, details, 3447003);
 }
@@ -193,7 +193,7 @@ export async function postExitUnconfirmed(
   name: string,
   flund: string,
 ) {
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Exit Token: ${flund}`;
   postMessage(dryRun, 'Exit Unconfirmed', header, details, 16776960);
 }
@@ -214,7 +214,7 @@ export async function postExitSuccess(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `${flund} Quantity: ${flundQuantityStr}\n${flm} Quantity: ${flmQuantityStr}`;
   postMessage(dryRun, 'Exit Successful', header, details, 5763719);
 }
@@ -224,7 +224,7 @@ export async function postExitFailure(
   name: string,
   flund: string,
 ) {
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Exit Token: ${flund}`;
   postMessage(dryRun, 'Exit Failed', header, details, 15548997);
 }
@@ -245,7 +245,7 @@ export async function postLowBalance(
     undefined,
     { maximumFractionDigits: 2, minimumFractionDigits: 2 },
   );
-  const header = `Liquidator: ${name}`;
+  const header = `Maintainer: ${name}`;
   const details = `Collateral: ${collateral}\nFToken: ${fToken}\nFToken Balance: ${balanceStr}\nBalance Threshold: ${balanceThresholdStr}`;
   postMessage(dryRun, 'Low Balance', header, details, 16776960);
 }
