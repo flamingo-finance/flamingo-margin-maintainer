@@ -2,7 +2,7 @@
   "rpcNodeUrl": "https://rpc.t5.n3.nspcc.ru:20331",
   "wsNodeUrl": "wss://rpc.t5.n3.nspcc.ru:20331/ws",
   "networkMagic": 894710606,
-  "priceUrl": "https://api.flamingo.finance/token-info/test-signed-prices?fusd=100000000000000000000&bneo=11730315017186527000000&btc=1744755001603108400000000&flm=7721632997686562000",
+  "priceUrl": "https://api.flamingo.finance/token-info/test-signed-prices",
   "vaultScriptHash": "0x4bd40c6fed6368bd1afcff5b3720054d6216a683",
   "routerScriptHash": "0x6f0910fa26290f4a423930c8f833395790c71705",
   "flmScriptHash": "0x5b53998b399d10cd25727269e865acc785ef5c1a",
