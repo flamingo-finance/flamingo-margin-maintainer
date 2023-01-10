@@ -1,9 +1,11 @@
 {
   "rpcNodeUrl": "https://rpc2.n3.nspcc.ru:10331",
   "wsNodeUrl": "wss://rpc2.n3.nspcc.ru:10331/ws",
+  "networkMagic": 860833102,
   "priceUrl": "https://o2.flamingo.finance/prices",
   "vaultScriptHash": "0x799bbfcbc97b5a425e14089aeb06753cb3190560",
   "routerScriptHash": "0xf970f4ccecd765b63732b821775dc38c25d74f23",
+  "priceFeedScriptHash": "0x918c5b34fab6786259b191073c8b309783e6db30",
   "flmScriptHash": "0xf0151f528127558851b39c2cd8aa47da7418ab28",
   "flundScriptHash": "0xa9603a59e21d29e37ac39cf1b5f5abf5006b22a3",
   "fTokenScriptHash": "0x1005d400bcc2a56b7352f09e273be3f9933a5fb1",

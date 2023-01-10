@@ -90,7 +90,9 @@ async function getPrices(
   const { decimals } = priceData.data;
   const fTokenOnChainPrice = +(await DapiUtils.getOnChainPrice(fTokenHash, decimals));
   const collateralOnChainPrice = +(await DapiUtils.getOnChainPrice(collateralHash, decimals));
-  const collateralOffChainPrice = +priceData.data.prices[collateralSymbol];
+  const collateralOffChainPrice = (COLLATERAL_SCRIPT_HASH === DapiUtils.FLUND_SCRIPT_HASH)
+    ? +priceData.data.prices[FLM_SYMBOL] * await DapiUtils.getFlundFlmRatio()
+    : +priceData.data.prices[collateralSymbol];
 
   return {
     payload: priceData.payload,

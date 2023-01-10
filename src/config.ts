@@ -66,6 +66,12 @@ const config = convict({
     arg: 'routerScriptHash',
     env: 'ROUTER_SCRIPT_HASH',
   },
+  priceFeedScriptHash: {
+    format: String,
+    default: '',
+    arg: 'priceFeedScriptHash',
+    env: 'PRICE_FEED_SCRIPT_HASH',
+  },
   flmScriptHash: {
     format: String,
     default: '',

@@ -23,6 +23,7 @@ export const FLM_SCRIPT_HASH = properties.flmScriptHash;
 export const FLUND_SCRIPT_HASH = properties.flundScriptHash;
 export const ROUTER_SCRIPT_HASH: string = properties.routerScriptHash;
 export const VAULT_SCRIPT_HASH: string = properties.vaultScriptHash;
+export const PRICE_FEED_SCRIPT_HASH: string = properties.priceFeedScriptHash;
 export const PRICE_URL: string = properties.priceUrl;
 
 export const MAINTAIN_COLLATERAL: string = 'LiquidateCollateral';
@@ -132,6 +133,17 @@ export async function getOnChainPrice(tokenHash: string, decimal: number) {
       sc.ContractParam.integer(decimal),
     ],
   ).then((ret) => parseInt(ret as unknown as string, 10));
+}
+
+export async function getFlundFlmRatio() {
+  return genericReadCall(
+    PRICE_FEED_SCRIPT_HASH,
+    'getFlundFlmRatio',
+    [],
+  ).then((ret) => {
+    const ratio = ret as any as StackItemJson[];
+    return parseInt(ratio[0].value as string, 10) / parseInt(ratio[1].value as string, 10);
+  });
 }
 
 export async function getVaultBalance(collateralHash: string, fTokenHash: string, address: string) {

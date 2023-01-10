@@ -5,6 +5,7 @@
   "priceUrl": "https://api.flamingo.finance/token-info/test-signed-prices",
   "vaultScriptHash": "0x4bd40c6fed6368bd1afcff5b3720054d6216a683",
   "routerScriptHash": "0x6f0910fa26290f4a423930c8f833395790c71705",
+  "priceFeedScriptHash": "0xe160681e622c4f7144ab259c42c8ea52138d1fee",
   "flmScriptHash": "0x5b53998b399d10cd25727269e865acc785ef5c1a",
   "flundScriptHash": "0x3d0085f442ead25ff3a7507c8eaa27cc8623a6be",
   "fTokenScriptHash": "0xcdaddd3e196bb1c1978364dd78b8cec5d4753f58",
