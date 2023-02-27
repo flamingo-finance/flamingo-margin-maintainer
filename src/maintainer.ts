@@ -348,13 +348,14 @@ async function attemptMarginMaintenance(
   priceData: PriceData,
 ) {
   const loanToValue = computeLoanToValue(vault, priceData);
-  logger.debug(`Attempting margin maintenance: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL}, FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
+  const address = wallet.getAddressFromScriptHash(vault.account);
+  logger.debug(`Attempting margin maintenance: Account: ${address}, Collateral: ${COLLATERAL_SYMBOL}, FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
 
   if (loanToValue > MAX_LOAN_TO_VALUE) {
     const maintenanceQuantity = computeMaintenanceQuantity(fTokenBalance, vault, priceData);
     const scaledMaintenanceQuantity = maintenanceQuantity / FTOKEN_MULTIPLIER;
     if (scaledMaintenanceQuantity > MAINTENANCE_THRESHOLD) {
-      logger.info(`Maintaining margin: Account: ${vault.account}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
+      logger.info(`Maintaining margin: Account: ${address}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
       try {
         await maintainMargin(notification, vault.account, maintenanceQuantity, priceData);
         return true;
@@ -365,13 +366,13 @@ async function attemptMarginMaintenance(
         return false;
       }
     } else {
-      logger.debug(`Did not maintain margin: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL},`
+      logger.debug(`Did not maintain margin: Account: ${address}, Collateral: ${COLLATERAL_SYMBOL},`
           + ` FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`
           + ` because maintenanceQuantity=${scaledMaintenanceQuantity} < MAINTENANCE_THRESHOLD=${MAINTENANCE_THRESHOLD}`);
       return false;
     }
   } else {
-    logger.debug(`Did not maintain margin: Account: ${vault.account}, Collateral: ${COLLATERAL_SYMBOL},`
+    logger.debug(`Did not maintain margin: Account: ${address}, Collateral: ${COLLATERAL_SYMBOL},`
         + ` FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`
         + ` because loanToValue=${loanToValue} < MAX_LOAN_TO_VALUE=${MAX_LOAN_TO_VALUE}`);
     return false;
