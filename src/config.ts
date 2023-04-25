@@ -169,6 +169,12 @@ const config = convict({
     arg: 'dryRun',
     env: 'DRY_RUN',
   },
+  randomVaultSort: {
+    format: Boolean,
+    default: true,
+    arg: 'randomVaultSort',
+    env: 'RANDOM_VALUT_SORT',
+  },
 });
 
 const env = config.get('env');

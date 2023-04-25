@@ -9,6 +9,8 @@
         "args": [
           "--logLevel",
           "info",
+          "--randomVaultSort",
+          "false"
         ],
         "cwd": "${workspaceRoot}",
         "env": {
@@ -32,6 +34,8 @@
         "hash:0x9b9f7db02c0a2d6aa5ad9be7bba843027bf5b5f2",
         "--logLevel",
         "info",
+        "--randomVaultSort",
+        "false"
       ],
       "cwd": "${workspaceRoot}",
       "env": {
@@ -55,6 +59,8 @@
         "hash:0x3d0085f442ead25ff3a7507c8eaa27cc8623a6be",
         "--logLevel",
         "info",
+        "--randomVaultSort",
+        "false"
       ],
       "cwd": "${workspaceRoot}",
       "env": {
@@ -78,6 +84,8 @@
         "prod",
         "--logLevel",
         "info",
+        "--randomVaultSort",
+        "false"  
       ],
       "cwd": "${workspaceRoot}",
       "env": {
@@ -103,6 +111,8 @@
         "hash:0xd6abe115ecb75e1fa0b42f5e85934ce8c1ae2893",
         "--logLevel",
         "info",
+        "--randomVaultSort",
+        "false"
       ],
       "cwd": "${workspaceRoot}",
       "env": {
@@ -128,6 +138,8 @@
         "hash:0xa9603a59e21d29e37ac39cf1b5f5abf5006b22a3",
         "--logLevel",
         "info",
+        "--randomVaultSort",
+        "false"
       ],
       "cwd": "${workspaceRoot}",
       "env": {

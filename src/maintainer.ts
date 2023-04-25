@@ -28,6 +28,7 @@ const AUTO_SWAP = properties.autoSwap;
 const SWAP_THRESHOLD = properties.swapThreshold;
 const VERIFY_WAIT_MILLIS = properties.verifyWaitMillis;
 const SLEEP_MILLIS = properties.sleepMillis;
+const VAULT_RANDOM_SORT = properties.randomVaultSort;
 
 // Globals, set on init
 let FTOKEN_SYMBOL: string;
@@ -349,7 +350,13 @@ async function attemptMarginMaintenance(
 ) {
   const loanToValue = computeLoanToValue(vault, priceData);
   const address = wallet.getAddressFromScriptHash(vault.account);
-  logger.debug(`Attempting margin maintenance: Account: ${address}, Collateral: ${COLLATERAL_SYMBOL}, FToken: ${FTOKEN_SYMBOL}, LTV: ${loanToValue}, Max LTV: ${MAX_LOAN_TO_VALUE}`);
+
+  const collateralPrint = vault.collateralBalance.toString().padStart(9, "0").padStart(16, " ");
+  const delimitedCollateral = collateralPrint.slice(0, 8).concat(".", collateralPrint.slice(8));
+  const fTokenPrint = vault.fTokenBalance.toString().padStart(9, "0").padStart(16, " ");
+  const delimitedFToken = fTokenPrint.slice(0, 8).concat(".", fTokenPrint.slice(8));
+
+  logger.info(`Processing: ${address}, Collateral: ${delimitedCollateral}, FToken: ${delimitedFToken}, LTV: ${loanToValue}`);
 
   if (loanToValue > MAX_LOAN_TO_VALUE) {
     const maintenanceQuantity = computeMaintenanceQuantity(fTokenBalance, vault, priceData);
@@ -419,6 +426,9 @@ function sleep(millis: number) {
 
     // 1. Update prices and balance
     const priceData = await getPrices(FTOKEN_SCRIPT_HASH, COLLATERAL_SCRIPT_HASH, COLLATERAL_SYMBOL, ON_CHAIN_PRICE_ONLY);
+    logger.info(`Collateral onchain  price: ${priceData.collateralOnChainPrice / (10 ** priceData.decimals)}`);
+    logger.info(`Collateral offchain price: ${priceData.collateralOffChainPrice  / (10 ** priceData.decimals)}`);
+
     const fTokenBalance = await DapiUtils.getBalance(FTOKEN_SCRIPT_HASH, OWNER);
     logger.info(`Current ${FTOKEN_SYMBOL} balance: ${fTokenBalance / FTOKEN_MULTIPLIER}`);
 
@@ -434,7 +444,12 @@ function sleep(millis: number) {
     let maintenanceSuccess = false;
     while (true) {
       const vaults = (await DapiUtils.getAllVaults(COLLATERAL_SCRIPT_HASH, FTOKEN_SCRIPT_HASH, MAX_PAGE_SIZE, pageNum))
-        .sort(() => Math.random() - 0.5);
+        .sort((a, b) => VAULT_RANDOM_SORT
+          ? Math.random() - 0.5
+          : computeLoanToValue(b, priceData) - computeLoanToValue(a, priceData));
+
+      logger.info(`Retrieved page ${pageNum} with ${vaults.length} vaults`);
+
       for (let i = 0; i < vaults.length; i++) {
         if (vaults[i].collateralBalance > 0) {
           maintenanceSuccess = await attemptMarginMaintenance(
@@ -448,7 +463,7 @@ function sleep(millis: number) {
           }
         }
       }
-      if (vaults.length === 0 || maintenanceSuccess) {
+      if (vaults.length === 0 || vaults.length < MAX_PAGE_SIZE || maintenanceSuccess) {
         break;
       }
       pageNum += 1;
