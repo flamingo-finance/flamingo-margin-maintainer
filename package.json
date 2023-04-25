@@ -2,10 +2,13 @@
   "name": "flamingo-margin-maintainer",
   "version": "1.0.2",
   "description": "",
-  "main": "index.js",
+  "main": "dist/maintainer.js",
+  "engines": {
+    "node": ">=16.19.0"
+  },
   "scripts": {
     "maintainer-dev": "npx ts-node ./src/maintainer.ts",
-    "maintainer": "node ./dist/maintainer.js",
+    "maintainer": "node .",
     "build": "tsc --project ./",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint . --ext .ts,"
@@ -14,25 +17,25 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/ws": "^8.5.2",
-    "@typescript-eslint/eslint-plugin": "^5.10.2",
-    "@typescript-eslint/parser": "^5.10.2",
-    "eslint": "^8.8.0",
+    "@types/convict": "^6.1.1",
+    "@types/ws": "^8.5.4",
+    "@typescript-eslint/eslint-plugin": "^5.59.1",
+    "@typescript-eslint/parser": "^5.59.1",
+    "eslint": "^8.39.0",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.25.4",
-    "ts-node": "^10.7.0",
-    "typescript": "^4.6.3"
+    "eslint-import-resolver-typescript": "^3.5.5",
+    "eslint-plugin-import": "^2.27.5",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4"
   },
   "dependencies": {
-    "@cityofzion/neon-core": "^5.0.0-next.15",
-    "@cityofzion/neon-js": "^5.0.0-next.15",
-    "@types/convict": "^6.1.1",
-    "axios": "^0.25.0",
-    "convict": "^6.2.1",
-    "dotenv": "^14.2.0",
-    "eslint-import-resolver-typescript": "^2.5.0",
-    "pino": "^7.6.5",
-    "pino-pretty": "^7.5.1",
-    "ws": "^8.5.0"
+    "@cityofzion/neon-core": "^5.4.0",
+    "@cityofzion/neon-js": "^5.4.0",
+    "axios": "^1.3.6",
+    "convict": "^6.2.4",
+    "dotenv": "^16.0.3",
+    "pino": "^8.11.0",
+    "pino-pretty": "^10.0.0",
+    "ws": "^8.13.0"
   }
 }
