@@ -46,3 +46,7 @@ As of Dec 20, 2022, flamingo-margin-maintainer loops through the following cycle
 | `DRY_RUN` | If set to true, output the computations without actually performing margin maintenance. Useful for testing and tuning parameters. |
 
 Although other parameters do exist in the configuration, tinkering with these properties is not advised unless you are familiar with Neo N3 development.
+
+### Debugging in VS Code ###
+
+You can add your private key as `PRIVATE_KEY` in the `.env` file
