@@ -6,7 +6,7 @@ const properties = config.getProperties();
 const NODE_ENV: string = properties.env;
 
 const logger = pino({
-  level: 'debug',
+  level: properties.logLevel,
   transport: {
     target: 'pino-pretty',
     options: {

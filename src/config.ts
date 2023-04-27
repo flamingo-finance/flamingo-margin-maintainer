@@ -3,6 +3,19 @@ import convict from 'convict';
 
 dotenv.config();
 
+convict.addFormat({
+  name: "script-hash",
+  validate: (val) => {
+    if (!/^0x[0-9a-fA-F]+$/.test(val)) {
+      throw new Error('Must be a hexadecimal string starting with 0x, and be prefixed with "hash:" when added on command line');
+    }
+  },
+  coerce: (input: string): string => {
+    const output = input.replace("hash:", "");
+    return output;
+  }
+});
+
 const config = convict({
   env: {
     doc: 'The application environment',
@@ -17,6 +30,12 @@ const config = convict({
     default: '',
     arg: 'privateKey',
     env: 'PRIVATE_KEY',
+  },
+  logLevel: {
+    format: ['debug', 'info', 'warn', 'error'],
+    default: 'debug',
+    arg: 'logLevel',
+    env: 'LOG_LEVEL',
   },
   rpcNodeUrl: {
     format: String,
@@ -55,43 +74,43 @@ const config = convict({
     env: 'MAX_PAGE_SIZE',
   },
   vaultScriptHash: {
-    format: String,
+    format: "script-hash",
     default: '',
     arg: 'vaultScriptHash',
     env: 'VAULT_SCRIPT_HASH',
   },
   routerScriptHash: {
-    format: String,
+    format: "script-hash",
     default: '',
     arg: 'routerScriptHash',
     env: 'ROUTER_SCRIPT_HASH',
   },
   priceFeedScriptHash: {
-    format: String,
+    format: "script-hash",
     default: '',
     arg: 'priceFeedScriptHash',
     env: 'PRICE_FEED_SCRIPT_HASH',
   },
   flmScriptHash: {
-    format: String,
+    format: "script-hash",
     default: '',
     arg: 'flmScriptHash',
     env: 'FLM_SCRIPT_HASH',
   },
   flundScriptHash: {
-    format: String,
+    format: "script-hash",
     default: '',
     arg: 'flundScriptHash',
     env: 'FLUND_SCRIPT_HASH',
   },
   fTokenScriptHash: {
-    format: String,
+    format: "script-hash",
     default: '',
     arg: 'fTokenScriptHash',
     env: 'FTOKEN_SCRIPT_HASH',
   },
   collateralScriptHash: {
-    format: String,
+    format: "script-hash",
     default: '',
     arg: 'collateralScriptHash',
     env: 'COLLATERAL_SCRIPT_HASH',
@@ -149,6 +168,12 @@ const config = convict({
     default: true,
     arg: 'dryRun',
     env: 'DRY_RUN',
+  },
+  randomVaultSort: {
+    format: Boolean,
+    default: true,
+    arg: 'randomVaultSort',
+    env: 'RANDOM_VALUT_SORT',
   },
 });
 

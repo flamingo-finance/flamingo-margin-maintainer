@@ -1,5 +1,5 @@
 {
-  "rpcNodeUrl": "https://rpc.t5.n3.nspcc.ru:20331",
+  "rpcNodeUrl": "https://testnet2.neo.coz.io:443",
   "wsNodeUrl": "wss://rpc.t5.n3.nspcc.ru:20331/ws",
   "networkMagic": 894710606,
   "priceUrl": "https://api.flamingo.finance/token-info/test-signed-prices",
